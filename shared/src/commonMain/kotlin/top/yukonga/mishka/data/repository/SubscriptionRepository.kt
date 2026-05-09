@@ -170,9 +170,9 @@ class SubscriptionRepository(
         if (importedDao.count() == 1) {
             _activeUuid.value = uuid
             storage.putString(StorageKeys.ACTIVE_PROFILE_UUID, uuid)
-            storage.putString(StorageKeys.ACTIVE_PROFILE_NAME, imported.name)
-            ProxyServiceBridge.requestNotificationRefresh()
         }
+        // 同步 active 订阅名（首次激活与编辑提交两种路径共用，辅助函数内部判 active 与变化）
+        syncActiveNameIfActive(uuid, imported.name)
     }
 
     /**
@@ -204,6 +204,9 @@ class SubscriptionRepository(
                 expire = expire ?: existing.expire,
             )
         )
+        if (name != null && name != existing.name) {
+            syncActiveNameIfActive(uuid, name)
+        }
     }
 
     /**
@@ -258,6 +261,18 @@ class SubscriptionRepository(
         val activeId = _activeUuid.value
         if (activeId.isEmpty()) return null
         return _subscriptions.value.find { it.id == activeId }
+    }
+
+    /**
+     * 当 uuid 是当前 active 时，同步 storage 中缓存的订阅名并触发通知刷新。
+     * 仅在 name 实际变化时 emit，避免周期性流量更新打断通知动画。
+     * 实现纯同步（storage write + tryEmit），允许在 profileLock 内调用。
+     */
+    private fun syncActiveNameIfActive(uuid: String, name: String) {
+        if (_activeUuid.value != uuid) return
+        if (storage.getString(StorageKeys.ACTIVE_PROFILE_NAME, "") == name) return
+        storage.putString(StorageKeys.ACTIVE_PROFILE_NAME, name)
+        ProxyServiceBridge.requestNotificationRefresh()
     }
 
     // === 视图解析（Pending 优先于 Imported） ===

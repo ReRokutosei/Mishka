@@ -302,6 +302,8 @@ GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build \
 
 **订阅导入不自动切换活跃**：`addSubscription`/`addFromFile` 成功后**不**调 `setActive(sub.id)`；仅首次导入（`importedDao.count() == 1`）由 `commitProcessingToImported` 自动激活
 
+**Active 订阅名缓存同步**：通知栏（`DynamicNotificationManager.startOrFallbackStatic`）启动时一次性读 storage `ACTIVE_PROFILE_NAME` snapshot，不订阅 DB Flow。`SubscriptionRepository` 在 `commitPending`（编辑/首次激活）与 `updateImported`（手动/自动更新拉到新 `profile-title`）末尾必须调 `syncActiveNameIfActive(uuid, name)`，否则编辑/更新的就是 active 订阅时通知栏标题会停在旧名，直到用户切换 active 才间接修复。辅助函数内部短路 active 检查 + 同名短路（避免周期性流量更新打断通知动画），仅当 uuid 是 active 且 name 实际变化时写 storage + `ProxyServiceBridge.requestNotificationRefresh()` 让 service 重读。`updateImported` 调用方还需在 `name != null && name != existing.name` 时才调，防止 `name = null` 的纯流量字段刷新触发冗余 emit。
+
 **JNI fork+exec**：Android `ProcessBuilder` fork 后强制关闭非标准 fd（无论 O_CLOEXEC），VPN 模式必须用 JNI `fork()+exec()`（`process_helper.c`）保留 TUN fd 继承
 
 **TUN init silent failure 兜底**：mihomo `ReCreateTun` 失败仅 log 不退出。检测规则：① `MishkaTunService` 清 O_CLOEXEC 失败必须视为致命（`closeTunFd` + `ProxyState.Error` + `stopSelf`）② `MihomoRunner.waitForReady` API ready 后 delay 500ms 扫日志匹配 `Start TUN listening error` / `configure tun interface` / `create NetworkUpdateMonitor`
