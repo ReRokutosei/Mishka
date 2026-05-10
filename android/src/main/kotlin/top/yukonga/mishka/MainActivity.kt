@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
             // ROOT 不可用时自动回退到 VPN 模式，防止卡在错误状态
             if (!hasRoot) {
                 val current = storage.getString(StorageKeys.TUN_MODE, "vpn")
-                if (current == "root" || current == "root_tun" || current == "root_tproxy") {
+                if (current == "root_tun" || current == "root_tproxy") {
                     storage.putString(StorageKeys.TUN_MODE, "vpn")
                 }
             }

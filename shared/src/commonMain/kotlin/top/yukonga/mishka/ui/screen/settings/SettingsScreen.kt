@@ -104,10 +104,9 @@ fun SettingsScreen(
         mutableStateOf(storage?.getString(StorageKeys.SUBSCRIPTION_UPDATE_VIA_PROXY, "true") != "false")
     }
     var tunModeIndex by remember {
-        // 兼容旧值："root" 视为 RootTun
         mutableIntStateOf(
             when (storage?.getString(StorageKeys.TUN_MODE, "vpn")) {
-                "root_tun", "root" -> 1
+                "root_tun" -> 1
                 "root_tproxy" -> 2
                 else -> 0
             }

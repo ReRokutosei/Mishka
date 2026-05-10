@@ -40,7 +40,7 @@ class MishkaRootService : Service() {
 
     /**
      * ROOT 模式的子形态。Intent EXTRA_SUBMODE 取 "tun"/"tproxy"；
-     * 缺省（为空或未知）兼容旧版迁移为 Tun。
+     * 缺省（为空或未知）兜底为 Tun。
      */
     private enum class Submode(val storageValue: String, val tunMode: TunMode) {
         Tun("tun", TunMode.RootTun),

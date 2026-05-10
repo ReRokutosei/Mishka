@@ -90,7 +90,7 @@ MainActivity → App → AppNavigation
 - **mihomo 客户端共享**：`MihomoConnectionManager`（application-scoped 单例，由 `MishkaApplication.connectionManager` 持有）订阅 `ProxyServiceBridge.state`，`Running` 时构造新 `MihomoRepository`，其他状态置 null；切换前同步 close 旧实例，杜绝 Ktor `HttpClient` 泄漏。所有消费方（5 个 ViewModel + `DynamicNotificationManager`）只 collect `connectionManager.repository: StateFlow<MihomoRepository?>`
 - **导航**：miuix NavDisplay + 自定义 Navigator（push/pop/popUntil + navigateForResult）+ LocalNavigator
 - **主页 Tab**：HorizontalPager + MainPagerState + NavigationBar（4 Tab）
-- **隧道三模式**：VPN / ROOT TUN / ROOT TPROXY（`TunMode { Vpn, RootTun, RootTproxy }`；旧 storage 值 `"root"` 自动迁移为 `"root_tun"`）
+- **隧道三模式**：VPN / ROOT TUN / ROOT TPROXY（`TunMode { Vpn, RootTun, RootTproxy }`）
   - **VPN**：VpnService 创建 TUN fd，mihomo 写 `tun.file-descriptor` + `auto-route=false`，工作目录 `imported/{uuid}/`（app UID）
   - **ROOT TUN**：mihomo 以 root 自建 TUN，`auto-route=true` + `auto-detect-interface=true`，工作目录独立 `runtime/{uuid}/` 沙箱（启动前从 imported/ 拷贝，停止时 `su rm -rf`）；imported/ 永远 app UID
   - **ROOT TPROXY**：**`tun.enable=false`**，mihomo 用 `tproxy-port=7895` 入站 + `dns.listen=0.0.0.0:1053`；`RootTproxyApplier` 装 `mangle PREROUTING/OUTPUT` + `nat PREROUTING/OUTPUT` + `ip rule fwmark 0x1000000 lookup 2024` + `ip route add local default dev lo table 2024`，透明劫持本机与热点流量；分应用代理改走 iptables `-m owner --uid-owner`

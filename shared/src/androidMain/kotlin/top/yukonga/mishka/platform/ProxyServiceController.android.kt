@@ -96,13 +96,7 @@ actual class ProxyServiceController(private val context: Context) {
     }
 
     actual fun getTunMode(): TunMode {
-        val raw = storage.getString(StorageKeys.TUN_MODE, "vpn")
-        // 旧版 "root" 迁移为 "root_tun"
-        val normalized = if (raw == "root") {
-            storage.putString(StorageKeys.TUN_MODE, "root_tun")
-            "root_tun"
-        } else raw
-        return when (normalized) {
+        return when (storage.getString(StorageKeys.TUN_MODE, "vpn")) {
             "root_tun" -> TunMode.RootTun
             "root_tproxy" -> TunMode.RootTproxy
             else -> TunMode.Vpn

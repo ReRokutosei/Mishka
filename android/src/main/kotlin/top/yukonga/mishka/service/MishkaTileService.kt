@@ -57,9 +57,8 @@ class MishkaTileService : TileService() {
                 TunMode.Vpn -> MishkaTunService.stop(applicationContext)
             }
         } else {
-            // 启动时读取设置中的模式；legacy "root" 兼容映射为 root_tun
             val mode = PlatformStorage(applicationContext).getString(StorageKeys.TUN_MODE, "vpn")
-            val isRoot = mode == "root_tun" || mode == "root_tproxy" || mode == "root"
+            val isRoot = mode == "root_tun" || mode == "root_tproxy"
             if (isRoot) {
                 MishkaRootService.start(applicationContext)
             } else {
