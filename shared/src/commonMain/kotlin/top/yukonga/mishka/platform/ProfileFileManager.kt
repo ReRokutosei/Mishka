@@ -27,9 +27,14 @@ interface ProfileFileManager {
     fun commitProcessingToImported(uuid: String)
 
     // === 校验（基于 processing 工作目录） ===
+    /**
+     * 使用 mihomo -t 校验配置。mihomo 解析 GEOIP/GEOSITE/IP-ASN 规则时若本地数据库缺失会触发 HTTP 下载，
+     * 因此需要 [proxyUrl] 与 [prefetch] 对称——非空时走 `HTTPS_PROXY`/`HTTP_PROXY` 环境变量传给子进程。
+     */
     suspend fun validate(
         workDir: String,
         configFileName: String = "config.yaml",
+        proxyUrl: String? = null,
         onProgress: ((String) -> Unit)? = null,
     ): String?
 

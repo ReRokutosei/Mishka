@@ -9,6 +9,7 @@ import top.yukonga.mishka.data.model.TunOverride
 import top.yukonga.mishka.platform.PlatformStorage
 import top.yukonga.mishka.platform.StorageKeys
 import top.yukonga.mishka.platform.TunMode
+import top.yukonga.mishka.service.RuntimeOverrideBuilder.DEFAULT_MIXED_PORT
 import top.yukonga.mishka.viewmodel.AppProxyMode
 import java.io.File
 

@@ -7,16 +7,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.coroutines.coroutineContext
 
 /**
  * 使用 mihomo -t 进行完整配置校验。
  * 与 MihomoRunner 不同，不需要 TUN fd 继承，可安全使用 ProcessBuilder。
+ *
+ * 注意：mihomo -t 在解析含 GEOIP/GEOSITE/IP-ASN 规则时会触发对应数据库 init，
+ * 缺失则按 mihomo 内部 90s timeout 走 HTTP 下载，因此必须支持 proxyUrl 注入，
+ * 与 MihomoPrefetcher 对称。
  */
 object MihomoValidator {
 
     private const val TAG = "MihomoValidator"
-    private const val TIMEOUT_MS = 90_000L
+    private const val TIMEOUT_DIRECT_MS = 120_000L
+    private const val TIMEOUT_PROXY_MS = 60_000L
     private const val POLL_INTERVAL_MS = 200L
 
     /**
@@ -25,12 +29,15 @@ object MihomoValidator {
      * @param context Android 上下文
      * @param workDir 工作目录（包含配置和 providers/）
      * @param configFileName 相对 workDir 的配置文件名，调用方可指定 override 合并后的校验专用配置
+     * @param proxyUrl 非空时设置 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量（mihomo 内 GeoIP/GeoSite
+     *                 下载会经此代理走当前运行的 mihomo 主进程）；走代理时超时缩短至 60s。
      * @return null 表示校验通过，否则返回错误信息
      */
     suspend fun validate(
         context: Context,
         workDir: String,
         configFileName: String = "config.yaml",
+        proxyUrl: String? = null,
         onProgress: ((String) -> Unit)? = null,
     ): String? = withContext(Dispatchers.IO) {
         val binary = getMihomoBinary(context)
@@ -46,20 +53,29 @@ object MihomoValidator {
             return@withContext "Configuration file does not exist: ${configFile.absolutePath}"
         }
 
+        val pb = ProcessBuilder(
+            binary.absolutePath,
+            "-t",
+            "-d", workDir,
+            "-f", configFile.absolutePath,
+        )
+            .directory(File(workDir))
+            .redirectErrorStream(true)
+
+        if (proxyUrl != null) {
+            // Go 的 net/http.DefaultTransport 读取这两个环境变量作为 HTTP proxy。
+            pb.environment()["HTTPS_PROXY"] = proxyUrl
+            pb.environment()["HTTP_PROXY"] = proxyUrl
+        }
+
         val process = try {
-            ProcessBuilder(
-                binary.absolutePath,
-                "-t",
-                "-d", workDir,
-                "-f", configFile.absolutePath,
-            )
-                .directory(File(workDir))
-                .redirectErrorStream(true)
-                .start()
+            pb.start()
         } catch (e: Exception) {
             Log.e(TAG, "mihomo -t failed to start", e)
             return@withContext "mihomo -t failed: ${e.message ?: e.javaClass.simpleName}"
         }
+
+        val timeoutMs = if (proxyUrl != null) TIMEOUT_PROXY_MS else TIMEOUT_DIRECT_MS
 
         // 独立线程消费 stdout：读在主协程会阻塞到 EOF，让后面的轮询循环形同虚设
         val outputBuilder = StringBuilder()
@@ -81,12 +97,19 @@ object MihomoValidator {
         }
 
         try {
-            val deadline = System.currentTimeMillis() + TIMEOUT_MS
+            val deadline = System.currentTimeMillis() + timeoutMs
             while (true) {
                 coroutineContext.ensureActive()
                 if (!process.isAlive) break
                 if (System.currentTimeMillis() > deadline) {
-                    Log.e(TAG, "mihomo -t timed out, output so far:\n${snapshotOutput(outputBuilder)}")
+                    Log.e(
+                        TAG,
+                        "mihomo -t timed out after ${timeoutMs}ms (proxy=${proxyUrl != null}), output so far:\n${
+                            snapshotOutput(
+                                outputBuilder
+                            )
+                        }",
+                    )
                     return@withContext "mihomo -t timed out"
                 }
                 delay(POLL_INTERVAL_MS)
@@ -94,7 +117,7 @@ object MihomoValidator {
             readerThread.join(1000)
             val output = snapshotOutput(outputBuilder)
             val exitCode = process.exitValue()
-            Log.i(TAG, "mihomo -t exit=$exitCode, output:\n$output")
+            Log.i(TAG, "mihomo -t exit=$exitCode (proxy=${proxyUrl != null}), output:\n$output")
             return@withContext if (exitCode == 0) null else parseErrorMessage(output)
         } finally {
             if (process.isAlive) {

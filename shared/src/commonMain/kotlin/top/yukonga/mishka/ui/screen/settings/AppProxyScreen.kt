@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mishka.shared.generated.resources.Res
 import mishka.shared.generated.resources.app_proxy_allow_all
 import mishka.shared.generated.resources.app_proxy_allow_all_summary
@@ -67,6 +68,8 @@ import top.yukonga.mishka.ui.component.SearchBarFake
 import top.yukonga.mishka.ui.component.SearchBox
 import top.yukonga.mishka.ui.component.SearchPager
 import top.yukonga.mishka.ui.component.SearchStatus
+import top.yukonga.mishka.ui.component.blur.BlurredBar
+import top.yukonga.mishka.ui.component.blur.rememberBlurBackdrop
 import top.yukonga.mishka.ui.util.rememberContentReady
 import top.yukonga.mishka.viewmodel.AppProxyMode
 import top.yukonga.mishka.viewmodel.AppProxyViewModel
@@ -85,6 +88,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.More
@@ -147,13 +151,21 @@ fun AppProxyScreen(
         derivedStateOf { 12.dp * (1f - scrollBehavior.state.collapsedFraction) }
     }
 
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
     Scaffold(
         topBar = {
-            searchStatus.TopAppBarAnim {
-                TopAppBar(
-                    title = stringResource(Res.string.app_proxy_title),
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                searchStatus.TopAppBarAnim(
+                    backgroundColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface,
+                ) {
+                    TopAppBar(
+                        title = stringResource(Res.string.app_proxy_title),
+                        color = barColor,
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = {
                         IconButton(onClick = {
                             if (viewModel.applyIfChanged()) {
                                 showToast(appliedMsg)
@@ -227,7 +239,9 @@ fun AppProxyScreen(
                                         .fillMaxWidth(),
                                 )
                                 DropdownImpl(
-                                    text = if (uiState.showSystemApps) stringResource(Res.string.app_proxy_hide_system) else stringResource(Res.string.app_proxy_show_system),
+                                    text = if (uiState.showSystemApps) stringResource(Res.string.app_proxy_hide_system) else stringResource(
+                                        Res.string.app_proxy_show_system
+                                    ),
                                     optionSize = 6,
                                     isSelected = uiState.showSystemApps,
                                     index = 3,
@@ -295,7 +309,8 @@ fun AppProxyScreen(
                             SearchBarFake(searchStatus.label, dynamicTopPadding)
                         }
                     },
-                )
+                    )
+                }
             }
         },
         popupHost = {
@@ -356,6 +371,7 @@ fun AppProxyScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                     .scrollEndHaptic()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -408,7 +424,13 @@ fun AppProxyScreen(
                         }
                     } else {
                         item(key = "apps_title") {
-                            SmallTitle(text = stringResource(Res.string.app_proxy_app_list, uiState.selectedPackages.size, uiState.apps.size))
+                            SmallTitle(
+                                text = stringResource(
+                                    Res.string.app_proxy_app_list,
+                                    uiState.selectedPackages.size,
+                                    uiState.apps.size
+                                )
+                            )
                         }
                         items(
                             items = filteredApps,

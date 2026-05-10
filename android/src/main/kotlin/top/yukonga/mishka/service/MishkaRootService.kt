@@ -59,6 +59,7 @@ class MishkaRootService : Service() {
     private val overrideStore by lazy { OverrideJsonStore(AndroidProfileFileManager(this)) }
     private var monitorJob: Job? = null
     private var notificationRefreshJob: Job? = null
+
     // 当前正在运行的 submode；由 onStartCommand 的 EXTRA_SUBMODE 设定
     @Volatile
     private var currentSubmode: Submode = Submode.Tun
@@ -114,6 +115,7 @@ class MishkaRootService : Service() {
                 val subscriptionId = intent.getStringExtra(EXTRA_SUBSCRIPTION_ID)
                 startProxy(subscriptionId)
             }
+
             ACTION_STOP -> stopProxy()
             ACTION_RESTART -> {
                 val subscriptionId = intent.getStringExtra(EXTRA_SUBSCRIPTION_ID)
@@ -151,18 +153,24 @@ class MishkaRootService : Service() {
             // 再 attach 上去 hijacker 规则会与 mihomo 实际监听状态错位（PROXY 的 TPROXY 规则
             // 指向不存在的端口 / BYPASS 下无效的 tproxy 进程）→ 拒绝 attach，走全新启动
             val tetherModeMismatch = existingPid > 0 &&
-                tetherModeActive.isNotEmpty() &&
-                tetherModeActive != tetherModeRequested
+                    tetherModeActive.isNotEmpty() &&
+                    tetherModeActive != tetherModeRequested
             // 用户在 app 被杀期间改过 submode（TUN ↔ TPROXY）：mihomo 启动参数和 iptables
             // 规则集差异巨大，无法 attach，必须 fresh restart
             val submodeMismatch = existingPid > 0 &&
-                submodeActive.isNotEmpty() &&
-                submodeActive != submode.storageValue
+                    submodeActive.isNotEmpty() &&
+                    submodeActive != submode.storageValue
             if (subscriptionMismatch) {
-                Log.i(TAG, "Existing process pid=$existingPid runs subscription=$existingSubscriptionId, requested=$subscriptionId, restarting")
+                Log.i(
+                    TAG,
+                    "Existing process pid=$existingPid runs subscription=$existingSubscriptionId, requested=$subscriptionId, restarting"
+                )
             }
             if (tetherModeMismatch) {
-                Log.i(TAG, "Tether mode changed while app was killed (active=$tetherModeActive, requested=$tetherModeRequested), restarting")
+                Log.i(
+                    TAG,
+                    "Tether mode changed while app was killed (active=$tetherModeActive, requested=$tetherModeRequested), restarting"
+                )
             }
             if (submodeMismatch) {
                 Log.i(TAG, "Submode changed while app was killed (active=$submodeActive, requested=${submode.storageValue}), restarting")
@@ -170,7 +178,8 @@ class MishkaRootService : Service() {
             if (existingPid > 0 && existingSecret.isNotEmpty() && !subscriptionMismatch && !tetherModeMismatch && !submodeMismatch) {
                 val ec = overrideStore.load().resolveExternalController()
                 if (runner.attachToExisting(existingPid, existingSecret, ec, subscriptionId)) {
-                    val existingStartTime = storage.getString(StorageKeys.ROOT_START_TIME, "").toLongOrNull() ?: Clock.System.now().toEpochMilliseconds()
+                    val existingStartTime =
+                        storage.getString(StorageKeys.ROOT_START_TIME, "").toLongOrNull() ?: Clock.System.now().toEpochMilliseconds()
                     Log.i(TAG, "Reconnected to existing mihomo: pid=$existingPid submode=${submode.storageValue}")
                     // App 进程重启后内存态丢失：规则默认仍在（mihomo 进程一直活着，iptables
                     // 在内核里也一直活着），无需重建。但系统重启 / 与其他代理模块共存被清过
@@ -180,7 +189,7 @@ class MishkaRootService : Service() {
                         Submode.Tun -> {
                             val activeMode = RootTetherHijacker.Mode.from(tetherModeActive.ifEmpty { tetherModeRequested })
                             val tproxySupported = activeMode == RootTetherHijacker.Mode.PROXY &&
-                                RootTetherHijacker.probeTproxySupport()
+                                    RootTetherHijacker.probeTproxySupport()
                             if (shouldReapplyOnAttach(storage, RootTetherHijacker::anyRulesPresent)) {
                                 applyTetherRulesActive(storage, tproxySupported)
                             }
@@ -192,11 +201,23 @@ class MishkaRootService : Service() {
                             }
                         }
                     }
-                    ProxyServiceBridge.updateState(ProxyServiceStatus(ProxyState.Running, secret = existingSecret, externalController = ec, tunMode = tunMode, startTime = existingStartTime, mihomoPid = runner.pid))
+                    ProxyServiceBridge.updateState(
+                        ProxyServiceStatus(
+                            ProxyState.Running,
+                            secret = existingSecret,
+                            externalController = ec,
+                            tunMode = tunMode,
+                            startTime = existingStartTime,
+                            mihomoPid = runner.pid
+                        )
+                    )
                     dynamicNotification.startOrFallbackStatic(storage, tunMode)
                     storage.putString(StorageKeys.SERVICE_WAS_RUNNING, "true")
                     // 重连到活着的 mihomo：它仍在 runtime/{uuid}/ 下跑，监控日志从同一目录读
-                    val workDir = if (subscriptionId != null) ProfileFileOps.getRuntimeDir(this@MishkaRootService, subscriptionId) else ConfigGenerator.getWorkDir(this@MishkaRootService)
+                    val workDir = if (subscriptionId != null) ProfileFileOps.getRuntimeDir(
+                        this@MishkaRootService,
+                        subscriptionId
+                    ) else ConfigGenerator.getWorkDir(this@MishkaRootService)
                     startProcessMonitor(workDir)
                     return@launch
                 }
@@ -269,7 +290,7 @@ class MishkaRootService : Service() {
             // 仅 TUN submode 且用户选 PROXY 时才探测 xt_TPROXY 为 RootTetherHijacker 开 tproxy-port 入站；
             // 探测结果同步写入 StorageKeys.ROOT_TPROXY_KERNEL_CAPABLE，UI 据此决定是否显示降级告警
             val userWantsProxy = submode == Submode.Tun &&
-                tetherModeRequested == RootTetherHijacker.Mode.PROXY.storageValue
+                    tetherModeRequested == RootTetherHijacker.Mode.PROXY.storageValue
             val tproxyForTether = if (userWantsProxy) {
                 val supported = RootTetherHijacker.probeTproxySupport()
                 if (!supported) Log.w(TAG, "xt_TPROXY unavailable, PROXY degraded to userspace TUN")
@@ -326,12 +347,24 @@ class MishkaRootService : Service() {
             }
 
             // 7. 更新状态和通知
-            ProxyServiceBridge.updateState(ProxyServiceStatus(ProxyState.Running, secret = runner.secret, externalController = extCtl, tunMode = tunMode, startTime = startTime, mihomoPid = runner.pid))
+            ProxyServiceBridge.updateState(
+                ProxyServiceStatus(
+                    ProxyState.Running,
+                    secret = runner.secret,
+                    externalController = extCtl,
+                    tunMode = tunMode,
+                    startTime = startTime,
+                    mihomoPid = runner.pid
+                )
+            )
             dynamicNotification.startOrFallbackStatic(storage, tunMode)
             storage.putString(StorageKeys.SERVICE_WAS_RUNNING, "true")
             Log.i(TAG, "Proxy running (ROOT $submode)")
 
-            val workDir = if (subscriptionId != null) ProfileFileOps.getRuntimeDir(this@MishkaRootService, subscriptionId) else ConfigGenerator.getWorkDir(this@MishkaRootService)
+            val workDir = if (subscriptionId != null) ProfileFileOps.getRuntimeDir(
+                this@MishkaRootService,
+                subscriptionId
+            ) else ConfigGenerator.getWorkDir(this@MishkaRootService)
             startProcessMonitor(workDir)
         }
     }

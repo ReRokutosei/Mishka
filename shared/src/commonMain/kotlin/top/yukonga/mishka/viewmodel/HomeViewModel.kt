@@ -111,18 +111,22 @@ class HomeViewModel(
                     ProxyState.Starting -> {
                         _uiState.value = _uiState.value.copy(isStarting = true, isStopping = false, tunMode = status.tunMode)
                     }
+
                     ProxyState.Running -> {
                         _uiState.value = _uiState.value.copy(isStarting = false, isRunning = true, tunMode = status.tunMode)
                         startTime = if (status.startTime > 0) status.startTime else Clock.System.now().toEpochMilliseconds()
                         mihomoPid = status.mihomoPid
                     }
+
                     ProxyState.Stopping -> {
                         _uiState.value = _uiState.value.copy(isRunning = false, isStopping = true)
                     }
+
                     ProxyState.Stopped -> {
                         _uiState.value = HomeUiState()
                         resetHotStates()
                     }
+
                     ProxyState.Error -> {
                         _uiState.value = HomeUiState(errorMessage = status.errorMessage)
                         resetHotStates()
@@ -290,7 +294,7 @@ class HomeViewModel(
             val defaultGroup = sortedProxies
                 .firstOrNull {
                     it.type.equals("Selector", true) &&
-                        it.name.contains(Regex("(?i)proxy|代理|节点"))
+                            it.name.contains(Regex("(?i)proxy|代理|节点"))
                 }?.name
                 ?: sortedProxies.firstOrNull { it.type.equals("Selector", true) }?.name
                 ?: sortedProxies.firstOrNull { it.type.equals("URLTest", true) }?.name

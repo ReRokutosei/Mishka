@@ -30,8 +30,8 @@ class AndroidProfileFileManager(private val context: Context) : ProfileFileManag
         ProfileFileOps.commitProcessingToImported(context, uuid)
     }
 
-    override suspend fun validate(workDir: String, configFileName: String, onProgress: ((String) -> Unit)?): String? {
-        return MihomoValidator.validate(context, workDir, configFileName, onProgress)
+    override suspend fun validate(workDir: String, configFileName: String, proxyUrl: String?, onProgress: ((String) -> Unit)?): String? {
+        return MihomoValidator.validate(context, workDir, configFileName, proxyUrl, onProgress)
     }
 
     override suspend fun prefetch(workDir: String, configFileName: String, proxyUrl: String?, onProgress: ((String) -> Unit)?): Boolean {

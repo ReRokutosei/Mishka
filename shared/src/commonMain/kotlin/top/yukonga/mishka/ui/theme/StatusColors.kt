@@ -73,10 +73,12 @@ object StatusColors {
                 container = if (isDark) Color(0xFF1B3A26) else Color(0xFFDFF5E3),
                 content = if (isDark) Color(0xFF66BB6A) else Color(0xFF43A047),
             )
+
             ActionKind.Stop -> ActionPalette(
                 container = if (isDark) Color(0xFF3A1B1B) else Color(0xFFFDE8E8),
                 content = if (isDark) Color(0xFFEF5350) else Color(0xFFE53935),
             )
+
             ActionKind.Reload -> ActionPalette(
                 container = if (isDark) Color(0xFF1B2D3A) else Color(0xFFE3F2FD),
                 content = if (isDark) Color(0xFF42A5F5) else Color(0xFF1E88E5),

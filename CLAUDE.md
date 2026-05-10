@@ -46,12 +46,14 @@ Mishka/
 │   │   │   ├── navigation/           AppNavigation（主导航树 + HorizontalPager）
 │   │   │   ├── navigation3/          Route + Navigator（自定义栈）
 │   │   │   ├── component/            SearchBar + SearchStatus + MenuPositionProvider + TriStatePreference + NullablePortPreference + ListEditDialog + RestartRequiredHint
-│   │   │   │   └── effect/           BgEffectBackground（OS3 动态渐变着色器背景）
+│   │   │   │   ├── blur/             BlurExt（BlurredBar/defaultBlurEffect/rememberBlurBackdrop）+ ColorBlendToken
+│   │   │   │   └── effect/           BgEffectBackground + BgEffectModifier + BgEffectPainter + BgEffectConfig + DeviceType + OS3BgFrag（OS3 动态渐变着色器背景，ModifierNodeElement + 60FPS 限频）
 │   │   │   ├── theme/                StatusColors（语义色 token：runState/delay/actionButton/...）
 │   │   │   └── screen/               页面（home/ proxy/ subscription/ settings/ log/ provider/ dns/ connection/）
 │   │   ├── viewmodel/                ViewModel
 │   │   └── util/                     FormatUtils + ThrowableExt
 │   ├── commonMain/composeResources/
+│   │   ├── drawable/ic_launcher_foreground.xml  About 页 hero 图标（Android Vector，KMP 共享）
 │   │   ├── values/strings.xml        英文默认字符串
 │   │   └── values-zh-rCN/strings.xml 中文字符串
 │   ├── androidMain/                  actual 实现 + AppDatabaseBuilder
@@ -103,10 +105,10 @@ MainActivity → App → AppNavigation
 - **数据持久化**：Room 3.0 KMP（结构化数据）+ PlatformStorage（简单偏好）+ StorageKeys（key 常量）+ OverrideJsonStore（`override.user.json` + ConfigurationOverride `@Serializable`）；store 自带 `state: StateFlow<ConfigurationOverride>` + `update(transform)`，Settings 三个切片 VM 共享同一实例
 - **订阅管理**：Pending → Processing → Imported 三阶段沙箱，`ProfileProcessor` 编排 snapshot → fetch → validate → prefetch → commit 五阶段；processLock 串行，profileLock 守护 DB 一致性
 - **订阅 HTTP**：Ktor + HttpTimeout（connect 30s / request 60s），UA `ClashMetaForAndroid/{version}`（订阅服务白名单）；状态码 / 空 body 检查 → `ImportError`；不做 base64/V2Ray 转换，原始 YAML 直接交 mihomo
-- **订阅下载走代理**：`SubscriptionProxyResolver` 按「开关 + 代理运行中 + 可解析 mixed-port」返回 proxy URL 或 null；`SubscriptionFetcher` 按需配 proxy，网络层异常自动 fallback 直连；`MihomoPrefetcher` 子进程注入 `HTTPS_PROXY`/`HTTP_PROXY` env
+- **订阅下载走代理**：`SubscriptionProxyResolver` 按「开关 + 代理运行中 + 可解析 mixed-port」返回 proxy URL 或 null；`SubscriptionFetcher` 按需配 proxy，网络层异常自动 fallback 直连；`MihomoValidator` / `MihomoPrefetcher` 两条 mihomo 子进程路径都注入 `HTTPS_PROXY`/`HTTP_PROXY` env，`ProfileProcessor` 在 validate 前 resolve 一次复用给两阶段。validate 必须走代理：mihomo `-t` 解析 `GEOIP`/`GEOSITE`/`IP-ASN` 规则触发对应数据库 init，缺失则按 mihomo 内部 90s timeout 走 [downloadToPath](D:/GitHub/mihomo/component/geodata/init.go#L71) 自动拉取，Mishka 自身被排除在 VPN/TUN/TPROXY 外（直连国内 github 慢），不注入代理会撞外层超时。两子进程超时统一 60s（proxy）/ 120s（direct）
 - **Pipeline 可取消**：子进程 200ms 轮询 + `ensureActive()` 响应取消，finally `destroyForcibly`；`ImportProgressDialog` 可选 `onCancel`；`cancelCurrentUpdate` 先同步 `clearProgress()` 让 UI 立即响应，再 cancel 协程
 - **GeoIP 预制**：构建时 DownloadGeoFilesTask 下载 geoip.metadb/geosite.dat/ASN.mmdb 到 assets，启动时提取到 geodata/ 共享目录 + 符号链接
-- **配置校验**：`mihomo -t -f processing/config.yaml`（不传 `--override-json`，只 parse 不碰网，超时 90s）
+- **配置校验**：`mihomo -t -f processing/config.yaml`（不传 `--override-json`；config 含 GEOIP/GEOSITE/IP-ASN 规则时 mihomo 会触发数据库 init，按 proxy 注入与否分档超时 60s/120s）
 - **国际化**：英文 + 中文（zh-rCN），Compose Resources `stringResource()` + Android `getString()`；日志消息英文，代码注释中文
 
 ## 数据库架构（Room 3.0 KMP）
@@ -183,28 +185,28 @@ files/mihomo/
 
 ## 页面与 ViewModel
 
-| Screen                   | ViewModel             | 说明                                                            |
-| ------------------------ | --------------------- | --------------------------------------------------------------- |
-| HomeScreen               | HomeViewModel         | 状态/ActionButtons/NetworkInfo/QuickEntries/Latency/BottomCards |
-| ProxyScreen              | ProxyViewModel        | 代理组 Tab + 节点选择 + 延迟测试 + 选择记忆                     |
-| SubscriptionScreen       | SubscriptionViewModel | 订阅列表 + 增删改 + 全部更新 + 编辑 + 复制（可取消 Pipeline）   |
-| SubscriptionEditScreen   | SubscriptionViewModel | 编辑名称/URL/更新间隔                                           |
-| SettingsScreen           | —                     | 设置入口（TUN 模式/主题/开机自启）                              |
-| LogScreen                | LogViewModel          | 实时日志流 + 级别过滤                                           |
-| ConnectionScreen         | ConnectionViewModel   | 活跃连接列表 + 关闭                                             |
-| ProviderScreen           | ProviderViewModel     | Provider 列表 + 刷新                                            |
-| DnsQueryScreen           | DnsQueryViewModel     | DNS 查询（A/AAAA/CNAME/MX/TXT/NS）                              |
-| AppProxyScreen           | AppProxyViewModel     | 应用代理白/黑名单                                               |
-| VpnSettingsScreen        | —                     | VPN 设置（系统代理/排除路由等），仅 VPN 模式可见                |
-| RootSettingsScreen       | —                     | ROOT 设置（TUN 设备名 + 热点客户端处置），仅 ROOT 模式可见      |
-| NetworkSettingsScreen    | NetworkSettingsVM     | 端口/局域网/IPv6/DNS                                            |
-| MetaSettingsScreen       | MetaSettingsVM        | 统一延迟/Geodata/TCP 并发/嗅探器                                |
-| ExternalControlScreen    | ExternalControlVM     | mihomo HTTP API external-controller + API secret                |
-| FileManagerScreen        | SubscriptionViewModel | imported 订阅目录浏览                                           |
-| FileManagerEditorScreen  | SubscriptionViewModel | 多行 TextField 编辑 YAML，保存前 mihomo -t 校验，失败回滚       |
-| AboutScreen              | —                     | 版本信息（OS3 动态背景 + 视差滚动）                             |
-| SubscriptionAddScreen    | —                     | 添加方式选择（文件/URL/QR Code）                                |
-| SubscriptionAddUrlScreen | SubscriptionViewModel | URL 导入订阅                                                    |
+| Screen                   | ViewModel             | 说明                                                                           |
+| ------------------------ | --------------------- | ------------------------------------------------------------------------------ |
+| HomeScreen               | HomeViewModel         | 状态/ActionButtons/NetworkInfo/QuickEntries/Latency/BottomCards                |
+| ProxyScreen              | ProxyViewModel        | 代理组 Tab + 节点选择 + 延迟测试 + 选择记忆                                    |
+| SubscriptionScreen       | SubscriptionViewModel | 订阅列表 + 增删改 + 全部更新 + 编辑 + 复制（可取消 Pipeline）                  |
+| SubscriptionEditScreen   | SubscriptionViewModel | 编辑名称/URL/更新间隔                                                          |
+| SettingsScreen           | —                     | 设置入口（TUN 模式/主题/开机自启）                                             |
+| LogScreen                | LogViewModel          | 实时日志流 + 级别过滤                                                          |
+| ConnectionScreen         | ConnectionViewModel   | 活跃连接列表 + 关闭                                                            |
+| ProviderScreen           | ProviderViewModel     | Provider 列表 + 刷新                                                           |
+| DnsQueryScreen           | DnsQueryViewModel     | DNS 查询（A/AAAA/CNAME/MX/TXT/NS）                                             |
+| AppProxyScreen           | AppProxyViewModel     | 应用代理白/黑名单                                                              |
+| VpnSettingsScreen        | —                     | VPN 设置（系统代理/排除路由等），仅 VPN 模式可见                               |
+| RootSettingsScreen       | —                     | ROOT 设置（TUN 设备名 + 热点客户端处置），仅 ROOT 模式可见                     |
+| NetworkSettingsScreen    | NetworkSettingsVM     | 端口/局域网/IPv6/DNS                                                           |
+| MetaSettingsScreen       | MetaSettingsVM        | 统一延迟/Geodata/TCP 并发/嗅探器                                               |
+| ExternalControlScreen    | ExternalControlVM     | mihomo HTTP API external-controller + API secret                               |
+| FileManagerScreen        | SubscriptionViewModel | imported 订阅目录浏览                                                          |
+| FileManagerEditorScreen  | SubscriptionViewModel | 多行 TextField 编辑 YAML，保存前 mihomo -t 校验，失败回滚                      |
+| AboutScreen              | —                     | 版本信息（hero 图标 + 3 阶段视差 + OS3 动态背景）                              |
+| SubscriptionAddScreen    | —                     | 添加方式选择（文件/URL/QR Code）                                               |
+| SubscriptionAddUrlScreen | SubscriptionViewModel | URL 导入订阅                                                                   |
 
 ## 平台抽象（expect/actual）
 
@@ -238,7 +240,7 @@ files/mihomo/
 | ProfileFileOps             | 订阅目录管理（imported/pending/processing/runtime + GeoIP + ROOT 沙箱）                                                                                      |
 | AndroidProfileFileManager  | ProfileFileManager 接口的 Android 实现                                                                                                                       |
 | MihomoRunner               | mihomo 进程管理（VPN: JNI fork+exec / ROOT: su）                                                                                                             |
-| MihomoValidator            | mihomo -t 配置校验（ProcessBuilder，超时 90s，200ms 轮询响应协程取消）                                                                                       |
+| MihomoValidator            | mihomo -t 配置校验（ProcessBuilder，HTTPS_PROXY env，代理 60s/直连 120s，200ms 轮询响应协程取消）                                                            |
 | MihomoPrefetcher           | mihomo -prefetch provider 预下载（HTTPS_PROXY env，代理 60s/直连 120s，可取消）                                                                              |
 | ProcessHelper              | JNI 包装（nativeForkExec/nativeKill/nativeWaitpid）                                                                                                          |
 | NotificationHelper         | 三层通知渠道（VPN/更新进度/更新结果）                                                                                                                        |
@@ -362,6 +364,11 @@ GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build \
   - 末尾 item 统一 `item { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }` 吸收导航栏 + 留白
   - **二级页面（独立 NavDisplay entry）签名禁止 `bottomPadding: Dp` 参数**——靠 `Spacer(navigationBarsPadding())` 自适应即可
   - **4 个 Pager Tab 例外**（HomeScreen / ProxyScreen / SubscriptionScreen / SettingsScreen）：因外层 `MainPage` Scaffold 持有 `bottomBar`，必须接 `bottomPadding: Dp` 把 outer Scaffold 的 `innerPadding.calculateBottomPadding()` 透传给 LazyColumn `contentPadding`
+- **顶栏 / 底栏毛玻璃**：所有页面 Scaffold 必须用 `BlurredBar` 包裹 `TopAppBar` / `NavigationBar`；MainPage 外层 Scaffold + 每个二级页面各自一份 backdrop（嵌套 layerBackdrop 是 OK 的，layer 抓取相互独立）。模式：
+  - 顶层取 `val backdrop = rememberBlurBackdrop()` + `val blurActive = backdrop != null` + `val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface`
+  - `topBar = { BlurredBar(backdrop, blurActive) { TopAppBar(... color = barColor ...) } }` / `bottomBar = { BlurredBar(backdrop, blurActive) { NavigationBar(color = barColor) {...} } }`
+  - 内容区 LazyColumn modifier 链中追加 `.then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)` —— 让 backdrop 抓取内容 layer 给 TopAppBar/NavigationBar 的 textureBlur 用
+  - 含搜索动画的页面（AppProxyScreen / ConnectionScreen）：在 BlurredBar 内套 `searchStatus.TopAppBarAnim(backgroundColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface) { TopAppBar(...) }`，让搜索切换时不挡住毛玻璃
 - **Card 间距**：水平 12.dp，每项统一 `padding(horizontal = 12.dp).padding(bottom = 12.dp)`；不使用 `Arrangement.spacedBy`
 - **TextField 表单**：不包 Card，直接 `padding(horizontal = 12.dp).padding(bottom = 12.dp)`
 - **Edit Dialog 按钮顺序**：`not_modified | cancel | confirm`（三按钮 weight(1f) + `spacedBy(8.dp)`），confirm 用 `ButtonDefaults.textButtonColorsPrimary()`

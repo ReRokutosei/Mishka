@@ -11,12 +11,9 @@ internal object BgEffectConfig {
         val lightOffset: Float,
         val saturateOffset: Float,
         val pointOffset: Float,
-        val shadowColorMulti: Float = 0.3f,
-        val shadowColorOffset: Float = 0.3f,
-        val shadowNoiseScale: Float = 5.0f,
     )
 
-    private val OS3_PHONE_LIGHT = Config(
+    private val PHONE_LIGHT = Config(
         points = floatArrayOf(0.8f, 0.2f, 1.0f, 0.8f, 0.9f, 1.0f, 0.2f, 0.9f, 1.0f, 0.2f, 0.2f, 1.0f),
         colors1 = floatArrayOf(1.0f, 0.9f, 0.94f, 1.0f, 1.0f, 0.84f, 0.89f, 1.0f, 0.97f, 0.73f, 0.82f, 1.0f, 0.64f, 0.65f, 0.98f, 1.0f),
         colors2 = floatArrayOf(0.58f, 0.74f, 1.0f, 1.0f, 1.0f, 0.9f, 0.93f, 1.0f, 0.74f, 0.76f, 1.0f, 1.0f, 0.97f, 0.77f, 0.84f, 1.0f),
@@ -27,7 +24,7 @@ internal object BgEffectConfig {
         pointOffset = 0.2f,
     )
 
-    private val OS3_PHONE_DARK = Config(
+    private val PHONE_DARK = Config(
         points = floatArrayOf(0.8f, 0.2f, 1.0f, 0.8f, 0.9f, 1.0f, 0.2f, 0.9f, 1.0f, 0.2f, 0.2f, 1.0f),
         colors1 = floatArrayOf(0.2f, 0.06f, 0.88f, 0.4f, 0.3f, 0.14f, 0.55f, 0.5f, 0.0f, 0.64f, 0.96f, 0.5f, 0.11f, 0.16f, 0.83f, 0.4f),
         colors2 = floatArrayOf(0.07f, 0.15f, 0.79f, 0.5f, 0.62f, 0.21f, 0.67f, 0.5f, 0.06f, 0.25f, 0.84f, 0.5f, 0.0f, 0.2f, 0.78f, 0.5f),
@@ -38,7 +35,7 @@ internal object BgEffectConfig {
         pointOffset = 0.4f,
     )
 
-    private val OS3_PAD_LIGHT = Config(
+    private val PAD_LIGHT = Config(
         points = floatArrayOf(0.8f, 0.2f, 1.0f, 0.8f, 0.9f, 1.0f, 0.2f, 0.9f, 1.0f, 0.2f, 0.2f, 1.0f),
         colors1 = floatArrayOf(0.99f, 0.77f, 0.86f, 1.0f, 0.74f, 0.76f, 1.0f, 1.0f, 0.72f, 0.74f, 1.0f, 1.0f, 0.98f, 0.76f, 0.8f, 1.0f),
         colors2 = floatArrayOf(0.66f, 0.75f, 1.0f, 1.0f, 1.0f, 0.86f, 0.91f, 1.0f, 0.74f, 0.76f, 1.0f, 1.0f, 0.97f, 0.77f, 0.84f, 1.0f),
@@ -49,7 +46,7 @@ internal object BgEffectConfig {
         pointOffset = 0.2f,
     )
 
-    private val OS3_PAD_DARK = Config(
+    private val PAD_DARK = Config(
         points = floatArrayOf(0.8f, 0.2f, 1.0f, 0.8f, 0.9f, 1.0f, 0.2f, 0.9f, 1.0f, 0.2f, 0.2f, 1.0f),
         colors1 = floatArrayOf(0.66f, 0.26f, 0.62f, 0.4f, 0.06f, 0.25f, 0.84f, 0.5f, 0.0f, 0.64f, 0.96f, 0.5f, 0.14f, 0.18f, 0.55f, 0.5f),
         colors2 = floatArrayOf(0.07f, 0.15f, 0.79f, 0.5f, 0.11f, 0.16f, 0.83f, 0.5f, 0.06f, 0.25f, 0.84f, 0.5f, 0.66f, 0.26f, 0.62f, 0.5f),
@@ -61,7 +58,7 @@ internal object BgEffectConfig {
     )
 
     internal fun get(deviceType: DeviceType, isDark: Boolean): Config = when (deviceType) {
-        DeviceType.PHONE -> if (!isDark) OS3_PHONE_LIGHT else OS3_PHONE_DARK
-        DeviceType.PAD -> if (!isDark) OS3_PAD_LIGHT else OS3_PAD_DARK
+        DeviceType.PHONE -> if (!isDark) PHONE_LIGHT else PHONE_DARK
+        DeviceType.PAD -> if (!isDark) PAD_LIGHT else PAD_DARK
     }
 }

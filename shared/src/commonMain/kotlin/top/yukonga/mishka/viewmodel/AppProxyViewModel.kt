@@ -61,9 +61,9 @@ class AppProxyViewModel(
         apps
             .filter { app ->
                 (showSystem || !app.isSystemApp) &&
-                    (q.isBlank() ||
-                        app.appName.lowercase().contains(q) ||
-                        app.packageName.lowercase().contains(q))
+                        (q.isBlank() ||
+                                app.appName.lowercase().contains(q) ||
+                                app.packageName.lowercase().contains(q))
             }
             .sortedWith(
                 compareByDescending<AppInfo> { it.packageName in anchor }
@@ -78,7 +78,11 @@ class AppProxyViewModel(
 
     private fun loadSavedState() {
         val modeStr = storage.getString(StorageKeys.APP_PROXY_MODE, "AllowAll")
-        val mode = try { AppProxyMode.valueOf(modeStr) } catch (_: Exception) { AppProxyMode.AllowAll }
+        val mode = try {
+            AppProxyMode.valueOf(modeStr)
+        } catch (_: Exception) {
+            AppProxyMode.AllowAll
+        }
 
         val packages = storage.getStringSet(StorageKeys.APP_PROXY_PACKAGES, emptySet())
 
@@ -110,9 +114,9 @@ class AppProxyViewModel(
         val query = searchQuery.lowercase()
         return state.apps.filter { app ->
             (state.showSystemApps || !app.isSystemApp) &&
-                (query.isBlank() ||
-                    app.appName.lowercase().contains(query) ||
-                    app.packageName.lowercase().contains(query))
+                    (query.isBlank() ||
+                            app.appName.lowercase().contains(query) ||
+                            app.packageName.lowercase().contains(query))
         }
     }
 

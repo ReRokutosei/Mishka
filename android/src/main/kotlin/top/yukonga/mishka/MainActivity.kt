@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                             showQrToast(R.string.qr_unsupported)
                             null
                         }
+
                         raw.startsWith("http://") || raw.startsWith("https://") -> raw
                         else -> {
                             showQrToast(R.string.qr_invalid_subscription)
@@ -97,14 +98,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+
                 is QRResult.QRMissingPermission -> {
                     showQrToast(R.string.qr_permission_denied)
                     null
                 }
+
                 is QRResult.QRError -> {
                     showQrToast(R.string.qr_scan_failed)
                     null
                 }
+
                 is QRResult.QRUserCanceled -> null
             }
             qrResultCallback?.invoke(url)
@@ -142,6 +146,7 @@ class MainActivity : ComponentActivity() {
         proxyViewModel = ProxyViewModel(
             selectionDao = database.selectionDao(),
             getActiveUuid = { subscriptionViewModel.getActiveSubscription()?.id },
+            storage = storage,
         )
 
         homeViewModel = HomeViewModel(
@@ -238,6 +243,7 @@ class MainActivity : ComponentActivity() {
                     homeViewModel.startProxy()
                 }
             }
+
             FilePicker.FILE_PICK_REQUEST_CODE -> {
                 filePicker.handleResult(requestCode, resultCode, data)
             }

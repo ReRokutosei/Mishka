@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -38,6 +40,8 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import top.yukonga.mishka.platform.ProfileFileManager
 import top.yukonga.mishka.platform.showToast
+import top.yukonga.mishka.ui.component.blur.BlurredBar
+import top.yukonga.mishka.ui.component.blur.rememberBlurBackdrop
 import top.yukonga.mishka.viewmodel.SubscriptionViewModel
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -49,6 +53,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -75,29 +80,42 @@ fun FileManagerEditorScreen(
         textState.edit { replace(0, length, content) }
     }
 
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = relativePath,
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        val ld = LocalLayoutDirection.current
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(Res.string.common_back),
-                            tint = MiuixTheme.colorScheme.onSurface,
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = if (ld == LayoutDirection.Rtl) -1f else 1f
-                            },
-                        )
-                    }
-                },
-            )
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                TopAppBar(
+                    title = relativePath,
+                    color = barColor,
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            val ld = LocalLayoutDirection.current
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = stringResource(Res.string.common_back),
+                                tint = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = if (ld == LayoutDirection.Rtl) -1f else 1f
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().scrollEndHaptic().overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                .scrollEndHaptic()
+                .overScrollVertical()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .imePadding(),
             contentPadding = PaddingValues(
                 top = innerPadding.calculateTopPadding(),
             ),
@@ -125,7 +143,10 @@ fun FileManagerEditorScreen(
             item {
                 TextField(
                     state = textState,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
                     lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 12),
                 )
             }

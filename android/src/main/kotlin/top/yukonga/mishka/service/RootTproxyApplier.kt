@@ -178,18 +178,42 @@ object RootTproxyApplier {
         }
         // lo TPROXY：OUTPUT 打 mark 后经 `local default dev lo` reinject，命中这里 attach mihomo socket
         for (proto in listOf("tcp", "udp")) {
-            sb.appendLine("iptables  -w -t mangle -A $CHAIN_PRE -p $proto -i lo -j TPROXY --on-ip 127.0.0.1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${tag("pre-tproxy-lo-$proto")}")
+            sb.appendLine(
+                "iptables  -w -t mangle -A $CHAIN_PRE -p $proto -i lo -j TPROXY --on-ip 127.0.0.1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${
+                    tag(
+                        "pre-tproxy-lo-$proto"
+                    )
+                }"
+            )
             if (ipv6Enabled) {
-                sb.appendLine("ip6tables -w -t mangle -A $CHAIN_PRE -p $proto -i lo -j TPROXY --on-ip ::1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${tag("pre-tproxy-lo-$proto-v6")} 2>/dev/null")
+                sb.appendLine(
+                    "ip6tables -w -t mangle -A $CHAIN_PRE -p $proto -i lo -j TPROXY --on-ip ::1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${
+                        tag(
+                            "pre-tproxy-lo-$proto-v6"
+                        )
+                    } 2>/dev/null"
+                )
             }
         }
         // tether ifaces：热点客户端转发流量直接 TPROXY
         for (iface in tetherIfaces) {
             val esc = RootHelper.escapeShellSingleQuoted(iface)
             for (proto in listOf("tcp", "udp")) {
-                sb.appendLine("iptables  -w -t mangle -A $CHAIN_PRE -p $proto -i $esc -j TPROXY --on-ip 127.0.0.1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${tag("pre-tproxy-tether-$proto")}")
+                sb.appendLine(
+                    "iptables  -w -t mangle -A $CHAIN_PRE -p $proto -i $esc -j TPROXY --on-ip 127.0.0.1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${
+                        tag(
+                            "pre-tproxy-tether-$proto"
+                        )
+                    }"
+                )
                 if (ipv6Enabled) {
-                    sb.appendLine("ip6tables -w -t mangle -A $CHAIN_PRE -p $proto -i $esc -j TPROXY --on-ip ::1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${tag("pre-tproxy-tether-$proto-v6")} 2>/dev/null")
+                    sb.appendLine(
+                        "ip6tables -w -t mangle -A $CHAIN_PRE -p $proto -i $esc -j TPROXY --on-ip ::1 --on-port $TPROXY_PORT --tproxy-mark $MARK/$MASK ${
+                            tag(
+                                "pre-tproxy-tether-$proto-v6"
+                            )
+                        } 2>/dev/null"
+                    )
                 }
             }
         }
@@ -232,7 +256,13 @@ object RootTproxyApplier {
                     if (uid == appUid) continue // 避免覆盖 5a 的自绕
                     for (t in tables) {
                         for (proto in listOf("tcp", "udp")) {
-                            sb.appendLine("$t -w -t mangle -A $CHAIN_OUT -p $proto -m owner --uid-owner $uid -j MARK --set-xmark $MARK/$MASK ${tag("out-mark-uid-$proto")}")
+                            sb.appendLine(
+                                "$t -w -t mangle -A $CHAIN_OUT -p $proto -m owner --uid-owner $uid -j MARK --set-xmark $MARK/$MASK ${
+                                    tag(
+                                        "out-mark-uid-$proto"
+                                    )
+                                }"
+                            )
                         }
                     }
                 }

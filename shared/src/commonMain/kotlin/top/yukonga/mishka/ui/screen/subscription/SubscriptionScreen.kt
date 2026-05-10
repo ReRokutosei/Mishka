@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mishka.shared.generated.resources.Res
 import mishka.shared.generated.resources.common_back
 import mishka.shared.generated.resources.common_delete
@@ -38,13 +39,13 @@ import mishka.shared.generated.resources.common_processing
 import mishka.shared.generated.resources.common_update
 import mishka.shared.generated.resources.subscription_add
 import mishka.shared.generated.resources.subscription_config
+import mishka.shared.generated.resources.subscription_import_config
 import mishka.shared.generated.resources.subscription_in_use
 import mishka.shared.generated.resources.subscription_no_config
 import mishka.shared.generated.resources.subscription_no_traffic
 import mishka.shared.generated.resources.subscription_tap_add
 import mishka.shared.generated.resources.subscription_title
 import mishka.shared.generated.resources.subscription_update_all
-import mishka.shared.generated.resources.subscription_import_config
 import mishka.shared.generated.resources.subscription_update_config
 import mishka.shared.generated.resources.subscription_updated_at
 import mishka.shared.generated.resources.subscription_updating_progress
@@ -52,6 +53,8 @@ import mishka.shared.generated.resources.subscription_updating_title
 import mishka.shared.generated.resources.subscription_used_traffic
 import org.jetbrains.compose.resources.stringResource
 import top.yukonga.mishka.data.model.Subscription
+import top.yukonga.mishka.ui.component.blur.BlurredBar
+import top.yukonga.mishka.ui.component.blur.rememberBlurBackdrop
 import top.yukonga.mishka.ui.theme.StatusColors
 import top.yukonga.mishka.util.FormatUtils
 import top.yukonga.mishka.util.formatEpochMillisAsLocal
@@ -65,6 +68,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -92,11 +96,17 @@ fun SubscriptionScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = MiuixScrollBehavior()
 
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = stringResource(Res.string.subscription_title),
-                scrollBehavior = scrollBehavior,
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                TopAppBar(
+                    title = stringResource(Res.string.subscription_title),
+                    color = barColor,
+                    scrollBehavior = scrollBehavior,
                 navigationIcon = if (onBack != null) {
                     {
                         IconButton(onClick = onBack) {
@@ -135,12 +145,14 @@ fun SubscriptionScreen(
                         )
                     }
                 },
-            )
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),

@@ -22,9 +22,8 @@
  */
 JNIEXPORT jint JNICALL
 Java_top_yukonga_mishka_service_ProcessHelper_nativeForkExec(
-    JNIEnv *env, jclass clazz,
-    jstring jBinary, jobjectArray jArgs, jstring jWorkDir, jstring jLogFile)
-{
+        JNIEnv *env, jclass clazz,
+        jstring jBinary, jobjectArray jArgs, jstring jWorkDir, jstring jLogFile) {
 
     const char *binary = (*env)->GetStringUTFChars(env, jBinary, NULL);
     const char *workDir = (*env)->GetStringUTFChars(env, jWorkDir, NULL);
@@ -32,11 +31,10 @@ Java_top_yukonga_mishka_service_ProcessHelper_nativeForkExec(
 
     int argc = (*env)->GetArrayLength(env, jArgs);
     // argv: [binary, args..., NULL]
-    char **argv = (char **)calloc(argc + 2, sizeof(char *));
+    char **argv = (char **) calloc(argc + 2, sizeof(char *));
     argv[0] = strdup(binary);
-    for (int i = 0; i < argc; i++)
-    {
-        jstring jArg = (jstring)(*env)->GetObjectArrayElement(env, jArgs, i);
+    for (int i = 0; i < argc; i++) {
+        jstring jArg = (jstring) (*env)->GetObjectArrayElement(env, jArgs, i);
         const char *arg = (*env)->GetStringUTFChars(env, jArg, NULL);
         argv[i + 1] = strdup(arg);
         (*env)->ReleaseStringUTFChars(env, jArg, arg);
@@ -47,29 +45,23 @@ Java_top_yukonga_mishka_service_ProcessHelper_nativeForkExec(
 
     pid_t pid = fork();
 
-    if (pid == 0)
-    {
+    if (pid == 0) {
         // 子进程：脱离会话组，不关闭任何 fd，直接 exec
         setsid();
 
-        if (chdir(workDir) != 0)
-        {
+        if (chdir(workDir) != 0) {
             _exit(126);
         }
 
         // 重定向 stdout/stderr 到日志文件（或合并到 stderr）
-        if (logFile)
-        {
+        if (logFile) {
             int logFd = open(logFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (logFd >= 0)
-            {
+            if (logFd >= 0) {
                 dup2(logFd, STDOUT_FILENO);
                 dup2(logFd, STDERR_FILENO);
                 close(logFd);
             }
-        }
-        else
-        {
+        } else {
             dup2(STDERR_FILENO, STDOUT_FILENO);
         }
 
@@ -79,17 +71,13 @@ Java_top_yukonga_mishka_service_ProcessHelper_nativeForkExec(
 
     // 父进程：清理
     int result = (pid > 0) ? pid : -1;
-    if (pid < 0)
-    {
+    if (pid < 0) {
         LOGE("fork failed: %s", strerror(errno));
-    }
-    else
-    {
+    } else {
         LOGI("child pid=%d", pid);
     }
 
-    for (int i = 0; argv[i] != NULL; i++)
-    {
+    for (int i = 0; argv[i] != NULL; i++) {
         free(argv[i]);
     }
     free(argv);
@@ -106,10 +94,8 @@ Java_top_yukonga_mishka_service_ProcessHelper_nativeForkExec(
  */
 JNIEXPORT void JNICALL
 Java_top_yukonga_mishka_service_ProcessHelper_nativeKill(
-    JNIEnv *env, jclass clazz, jint pid)
-{
-    if (pid > 0)
-    {
+        JNIEnv *env, jclass clazz, jint pid) {
+    if (pid > 0) {
         LOGI("killing pid=%d", pid);
         kill(pid, SIGTERM);
     }
@@ -120,8 +106,7 @@ Java_top_yukonga_mishka_service_ProcessHelper_nativeKill(
  */
 JNIEXPORT jint JNICALL
 Java_top_yukonga_mishka_service_ProcessHelper_nativeWaitpid(
-    JNIEnv *env, jclass clazz, jint pid)
-{
+        JNIEnv *env, jclass clazz, jint pid) {
     int status = 0;
     waitpid(pid, &status, 0);
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;

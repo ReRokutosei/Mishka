@@ -7,7 +7,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.coroutines.coroutineContext
 
 /**
  * 使用 mihomo -prefetch 预下载所有 HTTP provider 到本地磁盘。
@@ -105,7 +104,12 @@ object MihomoPrefetcher {
                 coroutineContext.ensureActive()
                 if (!process.isAlive) break
                 if (System.currentTimeMillis() > deadline) {
-                    Log.w(TAG, "mihomo -prefetch timed out after ${timeoutMs}ms (proxy=${proxyUrl != null}), output so far:\n${snapshotOutput(outputBuilder)}")
+                    Log.w(
+                        TAG,
+                        "mihomo -prefetch timed out after ${timeoutMs}ms (proxy=${proxyUrl != null}), output so far:\n${
+                            snapshotOutput(outputBuilder)
+                        }"
+                    )
                     return@withContext false
                 }
                 delay(POLL_INTERVAL_MS)

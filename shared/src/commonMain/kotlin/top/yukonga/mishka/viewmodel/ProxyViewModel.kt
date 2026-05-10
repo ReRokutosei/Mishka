@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +19,8 @@ import kotlinx.coroutines.launch
 import top.yukonga.mishka.data.database.SelectionDao
 import top.yukonga.mishka.data.database.SelectionEntity
 import top.yukonga.mishka.data.repository.MihomoRepository
+import top.yukonga.mishka.platform.PlatformStorage
+import top.yukonga.mishka.platform.StorageKeys
 
 @Immutable
 data class ProxyGroupUi(
@@ -31,20 +36,33 @@ data class ProxyGroupUi(
 @Immutable
 data class ProxyUiState(
     val groups: ImmutableList<ProxyGroupUi> = persistentListOf(),
-    val isLoading: Boolean = false,
-    val isTesting: Boolean = false,
+    val testingGroups: ImmutableSet<String> = persistentSetOf(),
     val error: String = "",
 )
 
 class ProxyViewModel(
     private val selectionDao: SelectionDao? = null,
     private val getActiveUuid: () -> String? = { null },
+    private val storage: PlatformStorage? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProxyUiState())
     val uiState: StateFlow<ProxyUiState> = _uiState.asStateFlow()
 
+    // 节点排序状态：sortKeyIndex * 2 + (if reverse 1 else 0)
+    // 0/1=默认 升/降，2/3=名称 升/降，4/5=延迟 升/降
+    private val _sortOption = MutableStateFlow(loadInitialSortOption())
+    val sortOption: StateFlow<Int> = _sortOption.asStateFlow()
+
     private var repository: MihomoRepository? = null
+
+    fun updateSortOption(option: Int) {
+        _sortOption.value = option
+        storage?.putString(StorageKeys.PROXY_NODE_SORT_OPTION, option.toString())
+    }
+
+    private fun loadInitialSortOption(): Int =
+        storage?.getString(StorageKeys.PROXY_NODE_SORT_OPTION, "0")?.toIntOrNull() ?: 0
 
     fun setRepository(repo: MihomoRepository?) {
         repository = repo
@@ -57,7 +75,7 @@ class ProxyViewModel(
 
     fun loadProxies() {
         val repo = repository ?: return
-        _uiState.value = _uiState.value.copy(isLoading = true, error = "")
+        _uiState.value = _uiState.value.copy(error = "")
 
         viewModelScope.launch {
             val groupsResult = repo.getGroups()
@@ -109,18 +127,12 @@ class ProxyViewModel(
                         )
                     }
                     .toPersistentList()
-                _uiState.value = _uiState.value.copy(
-                    groups = groups,
-                    isLoading = false,
-                )
+                _uiState.value = _uiState.value.copy(groups = groups)
 
                 // 恢复已保存的代理组选择
                 restoreSelections(repo, groups)
             }.onFailure {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "加载失败: ${it.message}",
-                )
+                _uiState.value = _uiState.value.copy(error = "加载失败: ${it.message}")
             }
         }
     }
@@ -142,12 +154,18 @@ class ProxyViewModel(
 
     fun testGroupDelay(group: String) {
         val repo = repository ?: return
-        _uiState.value = _uiState.value.copy(isTesting = true)
+        if (group in _uiState.value.testingGroups) return
+        _uiState.value = _uiState.value.copy(
+            testingGroups = (_uiState.value.testingGroups + group).toPersistentSet(),
+        )
 
         viewModelScope.launch {
-            repo.healthCheck(group)
+            // mihomo /group/{name}/delay 测全部节点延迟，结果会自然写入 history.delay
+            repo.testGroupDelay(group)
             loadProxies()
-            _uiState.value = _uiState.value.copy(isTesting = false)
+            _uiState.value = _uiState.value.copy(
+                testingGroups = (_uiState.value.testingGroups - group).toPersistentSet(),
+            )
         }
     }
 

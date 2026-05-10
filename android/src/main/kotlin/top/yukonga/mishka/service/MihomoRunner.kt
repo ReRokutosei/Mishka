@@ -130,7 +130,8 @@ class MihomoRunner(private val context: Context) {
             }
 
             if (childPid <= 0) {
-                errorMessage = if (useRoot) context.getString(R.string.error_root_start_failed) else context.getString(R.string.error_fork_failed)
+                errorMessage =
+                    if (useRoot) context.getString(R.string.error_root_start_failed) else context.getString(R.string.error_fork_failed)
                 Log.e(TAG, errorMessage)
                 return@withContext false
             }
@@ -233,7 +234,7 @@ class MihomoRunner(private val context: Context) {
         )
         val errorLine = log.lines().firstOrNull { line ->
             (line.contains("level=error") || line.contains("level=fatal")) &&
-                tunErrorPatterns.any { line.contains(it, ignoreCase = true) }
+                    tunErrorPatterns.any { line.contains(it, ignoreCase = true) }
         } ?: return null
         Log.e(TAG, "TUN init failed: $errorLine")
         return context.getString(R.string.error_tun_init_failed, extractErrorMessage(errorLine))

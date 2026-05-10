@@ -34,6 +34,7 @@ class ProfileReceiver : BroadcastReceiver() {
                 reset()
                 startProfileWorker(context, ProfileWorker.ACTION_SCHEDULE_UPDATES)
             }
+
             ACTION_PROFILE_REQUEST_UPDATE -> {
                 val uuid = intent.data?.host ?: return
                 Log.i(TAG, "Update requested for: $uuid")
@@ -163,6 +164,7 @@ class ProfileReceiver : BroadcastReceiver() {
                     scheduleAlarm(alarmManager, triggerAt, pi)
                     Log.i(TAG, "Re-armed $uuid update in ${MIN_INTERVAL_MS / 1000}s after FGS denial")
                 }
+
                 ProfileWorker.ACTION_SCHEDULE_UPDATES -> {
                     // boot / time_change 路径：rescheduleAll 没跑，所有单订阅闹钟链断了；
                     // 用一个 retry PendingIntent 触发下次 onReceive ACTION_BOOT_COMPLETED 分支

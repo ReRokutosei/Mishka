@@ -4,10 +4,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,6 +66,7 @@ class ProfileWorker : Service() {
             ACTION_SCHEDULE_UPDATES -> {
                 scope.launch { ProfileReceiver.rescheduleAll(this@ProfileWorker) }
             }
+
             ACTION_UPDATE_PROFILE -> {
                 val uuid = intent.data?.host
                 if (uuid != null) {

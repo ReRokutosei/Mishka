@@ -84,6 +84,7 @@ class MishkaTunService : VpnService() {
                 val subscriptionId = intent.getStringExtra(EXTRA_SUBSCRIPTION_ID)
                 startProxy(subscriptionId)
             }
+
             ACTION_STOP -> stopProxy()
             ACTION_RESTART -> {
                 val subscriptionId = intent.getStringExtra(EXTRA_SUBSCRIPTION_ID)
@@ -185,19 +186,27 @@ class MishkaTunService : VpnService() {
                                 addDisallowedApplication(packageName)
                             } else {
                                 filtered.forEach { pkg ->
-                                    try { addAllowedApplication(pkg) } catch (_: Exception) {}
+                                    try {
+                                        addAllowedApplication(pkg)
+                                    } catch (_: Exception) {
+                                    }
                                 }
                                 // AllowSelected 下 Mishka 不在 allow 列表内自然绕过 VPN（Android 默认行为）
                             }
                         }
+
                         "DenySelected" -> {
                             addDisallowedApplication(packageName)
                             packages.forEach { pkg ->
                                 if (pkg != packageName) {
-                                    try { addDisallowedApplication(pkg) } catch (_: Exception) {}
+                                    try {
+                                        addDisallowedApplication(pkg)
+                                    } catch (_: Exception) {
+                                    }
                                 }
                             }
                         }
+
                         else -> {
                             addDisallowedApplication(packageName)
                         }
@@ -214,11 +223,13 @@ class MishkaTunService : VpnService() {
                                 android.net.ProxyInfo.buildDirectProxy(
                                     "127.0.0.1",
                                     port,
-                                    listOf("localhost", "*.local", "127.*", "10.*", "172.16.*",
+                                    listOf(
+                                        "localhost", "*.local", "127.*", "10.*", "172.16.*",
                                         "172.17.*", "172.18.*", "172.19.*", "172.20.*",
                                         "172.21.*", "172.22.*", "172.23.*", "172.24.*",
                                         "172.25.*", "172.26.*", "172.27.*", "172.28.*",
-                                        "172.29.*", "172.30.*", "172.31.*", "192.168.*"),
+                                        "172.29.*", "172.30.*", "172.31.*", "192.168.*"
+                                    ),
                                 )
                             )
                         }

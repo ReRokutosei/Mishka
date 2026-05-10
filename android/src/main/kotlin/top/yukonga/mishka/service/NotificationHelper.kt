@@ -82,7 +82,11 @@ object NotificationHelper {
     }
 
     fun buildRunningNotification(context: Context, mode: String = "VpnService"): Notification {
-        return buildNotification(context, context.getString(R.string.notification_running_title), context.getString(R.string.notification_running_content, mode))
+        return buildNotification(
+            context,
+            context.getString(R.string.notification_running_title),
+            context.getString(R.string.notification_running_content, mode)
+        )
     }
 
     fun buildDynamicNotification(

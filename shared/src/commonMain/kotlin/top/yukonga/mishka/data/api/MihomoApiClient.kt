@@ -97,11 +97,20 @@ class MihomoApiClient(
         }.body()
 
     /**
-     * 触发代理组的健康检查（url-test/fallback 组会自动更新最优节点）
+     * 测试代理组内全部节点延迟（mihomo 并发执行，对任意 ProxyGroup 类型有效）。
+     * 返回 Map<节点名, 延迟ms>；超时节点延迟为 0（mihomo 端约定，UI 侧映射为 -1 显示「超时」）。
      */
-    suspend fun healthCheck(providerName: String) {
-        client.get("$baseUrl/providers/proxies/$providerName/healthcheck")
-    }
+    suspend fun getGroupDelay(
+        name: String,
+        testUrl: String = "http://www.gstatic.com/generate_204",
+        timeout: Int = 5000,
+    ): Map<String, Int> =
+        client.get("$baseUrl/group/$name/delay") {
+            url {
+                parameters.append("url", testUrl)
+                parameters.append("timeout", timeout.toString())
+            }
+        }.body()
 
     // === 规则 ===
 

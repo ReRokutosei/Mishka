@@ -41,6 +41,7 @@ fun ProviderRefreshDialog(
                     Res.string.provider_updating_single,
                     progress.singleName,
                 )
+
                 else -> stringResource(
                     Res.string.provider_updating_progress,
                     progress.completed,

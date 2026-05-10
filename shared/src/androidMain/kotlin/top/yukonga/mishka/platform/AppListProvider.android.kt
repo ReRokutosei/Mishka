@@ -31,9 +31,9 @@ actual class AppListProvider actual constructor(private val context: PlatformCon
             .filter { pkg ->
                 // 排除自身
                 pkg.packageName != selfPackage &&
-                    // 需有 INTERNET 权限或为系统应用
-                    (pkg.requestedPermissions?.contains(Manifest.permission.INTERNET) == true ||
-                        pkg.applicationInfo?.let { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 } == true)
+                        // 需有 INTERNET 权限或为系统应用
+                        (pkg.requestedPermissions?.contains(Manifest.permission.INTERNET) == true ||
+                                pkg.applicationInfo?.let { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 } == true)
             }
             .mapNotNull { pkg ->
                 val appInfo = pkg.applicationInfo ?: return@mapNotNull null

@@ -101,10 +101,12 @@ class ProfileProcessor(
                     if (result.subscription.name.isNotBlank()) resolvedName = result.subscription.name
                 }
 
-                // 阶段 3: 校验（mihomo -t 只做 parse，不碰网）
+                // 阶段 3: 校验（mihomo -t；config 含 GEOIP/GEOSITE/IP-ASN 规则时 mihomo 会下载缺失数据库）
                 fileManager.ensureGeodataAvailable(workDir)
                 onProgress(ImportProgress(getString(Res.string.subscription_validating)))
-                val err = fileManager.validate(workDir, "config.yaml") {
+                // 提前 resolve 一次，validate + prefetch 共用同一 proxyUrl，避免重复打开/关闭 MihomoApiClient
+                val proxyUrl = proxyResolver.resolve()
+                val err = fileManager.validate(workDir, "config.yaml", proxyUrl) {
                     onProgress(ImportProgress(it))
                 }
                 if (err != null) throw ConfigValidationException(err)
@@ -113,7 +115,6 @@ class ProfileProcessor(
                 // 目的是规避 mihomo 启动瞬间（TUN/DNS bring-up 窗口）并发 HTTP provider 拉取
                 // 被 TCP/TLS 瞬态错误打断导致代理组 include-all+filter 拉空的问题。
                 onProgress(ImportProgress(getString(Res.string.subscription_prefetching)))
-                val proxyUrl = proxyResolver.resolve()
                 fileManager.prefetch(workDir, "config.yaml", proxyUrl) {
                     onProgress(ImportProgress(it))
                 }

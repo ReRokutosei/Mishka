@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,24 +48,34 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import mishka.shared.generated.resources.Res
 import mishka.shared.generated.resources.common_more
-import mishka.shared.generated.resources.common_refresh
 import mishka.shared.generated.resources.proxy_no_groups
 import mishka.shared.generated.resources.proxy_refresh_icon
+import mishka.shared.generated.resources.proxy_sort_default
+import mishka.shared.generated.resources.proxy_sort_delay
+import mishka.shared.generated.resources.proxy_sort_name
+import mishka.shared.generated.resources.proxy_sort_reverse
+import mishka.shared.generated.resources.proxy_sort_title
 import mishka.shared.generated.resources.proxy_start_first
+import mishka.shared.generated.resources.proxy_test_group_delay
 import mishka.shared.generated.resources.proxy_timeout
 import mishka.shared.generated.resources.proxy_title
 import org.jetbrains.compose.resources.stringResource
 import top.yukonga.mishka.platform.IconLoader
 import top.yukonga.mishka.ui.component.ListPopupDefaults.MenuPositionProvider
+import top.yukonga.mishka.ui.component.blur.BlurredBar
+import top.yukonga.mishka.ui.component.blur.rememberBlurBackdrop
 import top.yukonga.mishka.ui.theme.StatusColors
 import top.yukonga.mishka.viewmodel.ProxyGroupUi
 import top.yukonga.mishka.viewmodel.ProxyUiState
 import top.yukonga.mishka.viewmodel.ProxyViewModel
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
@@ -75,10 +84,12 @@ import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -92,67 +103,132 @@ fun ProxyScreen(
     viewModel: ProxyViewModel? = null,
 ) {
     val uiState = viewModel?.uiState?.collectAsStateWithLifecycle()?.value ?: ProxyUiState()
+    val sortOption = viewModel?.sortOption?.collectAsStateWithLifecycle()?.value ?: 0
     val scrollBehavior = MiuixScrollBehavior()
     val groups = uiState.groups
 
     val showPopup = remember { mutableStateOf(false) }
+    val showSortPopup = remember { mutableStateOf(false) }
     var iconCacheVersion by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
+
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
 
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = stringResource(Res.string.proxy_title),
-                scrollBehavior = scrollBehavior,
-                actions = {
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                TopAppBar(
+                    title = stringResource(Res.string.proxy_title),
+                    color = barColor,
+                    scrollBehavior = scrollBehavior,
+                    actions = {
                     if (groups.isNotEmpty()) {
-                        IconButton(
-                            onClick = { viewModel?.loadProxies() },
-                            enabled = !uiState.isTesting,
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.Refresh,
-                                contentDescription = stringResource(Res.string.common_refresh),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
-                        IconButton(
-                            onClick = { showPopup.value = true },
-                            holdDownState = showPopup.value,
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.More,
-                                contentDescription = stringResource(Res.string.common_more),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
+                        Box {
+                            IconButton(
+                                onClick = { showSortPopup.value = true },
+                                holdDownState = showSortPopup.value,
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Sort,
+                                    contentDescription = stringResource(Res.string.proxy_sort_title),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
+
+                            WindowListPopup(
+                                show = showSortPopup.value,
+                                popupPositionProvider = MenuPositionProvider,
+                                alignment = PopupPositionProvider.Align.TopEnd,
+                                onDismissRequest = { showSortPopup.value = false },
+                            ) {
+                                ListPopupColumn {
+                                    val sortResIds = listOf(
+                                        Res.string.proxy_sort_default,
+                                        Res.string.proxy_sort_name,
+                                        Res.string.proxy_sort_delay,
+                                    )
+                                    val currentKey = sortOption / 2
+                                    val isReverse = sortOption % 2 != 0
+                                    val groupSize = sortResIds.size + 1
+
+                                    sortResIds.forEachIndexed { index, resId ->
+                                        DropdownImpl(
+                                            text = stringResource(resId),
+                                            optionSize = groupSize,
+                                            isSelected = currentKey == index,
+                                            index = index,
+                                            onSelectedIndexChange = {
+                                                viewModel?.updateSortOption(
+                                                    index * 2 + if (isReverse) 1 else 0
+                                                )
+                                                showSortPopup.value = false
+                                            },
+                                        )
+                                    }
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .padding(horizontal = 20.dp)
+                                            .fillMaxWidth(),
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.proxy_sort_reverse),
+                                        optionSize = groupSize,
+                                        isSelected = isReverse,
+                                        index = sortResIds.size,
+                                        onSelectedIndexChange = {
+                                            viewModel?.updateSortOption(
+                                                currentKey * 2 + if (!isReverse) 1 else 0
+                                            )
+                                            showSortPopup.value = false
+                                        },
+                                    )
+                                }
+                            }
                         }
 
-                        WindowListPopup(
-                            show = showPopup.value,
-                            popupPositionProvider = MenuPositionProvider,
-                            alignment = PopupPositionProvider.Align.TopEnd,
-                            onDismissRequest = { showPopup.value = false },
-                        ) {
-                            ListPopupColumn {
-                                DropdownImpl(
-                                    text = stringResource(Res.string.proxy_refresh_icon),
-                                    optionSize = 1,
-                                    isSelected = false,
-                                    index = 0,
-                                    onSelectedIndexChange = {
-                                        coroutineScope.launch { IconLoader.clear() }
-                                        iconCacheVersion++
-                                        showPopup.value = false
-                                    },
+                        Box {
+                            IconButton(
+                                onClick = { showPopup.value = true },
+                                holdDownState = showPopup.value,
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.More,
+                                    contentDescription = stringResource(Res.string.common_more),
+                                    tint = MiuixTheme.colorScheme.onSurface,
                                 )
+                            }
+
+                            WindowListPopup(
+                                show = showPopup.value,
+                                popupPositionProvider = MenuPositionProvider,
+                                alignment = PopupPositionProvider.Align.TopEnd,
+                                onDismissRequest = { showPopup.value = false },
+                            ) {
+                                ListPopupColumn {
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.proxy_refresh_icon),
+                                        optionSize = 1,
+                                        isSelected = false,
+                                        index = 0,
+                                        onSelectedIndexChange = {
+                                            coroutineScope.launch { IconLoader.clear() }
+                                            iconCacheVersion++
+                                            showPopup.value = false
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
                 },
-            )
+                )
+            }
         },
     ) { innerPadding ->
+        Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
         if (groups.isEmpty()) {
             Column(
                 modifier = Modifier
@@ -202,6 +278,8 @@ fun ProxyScreen(
                             group = group,
                             isExpanded = isExpanded,
                             iconCacheVersion = iconCacheVersion,
+                            isTesting = group.name in uiState.testingGroups,
+                            onTestDelay = { viewModel?.testGroupDelay(group.name) },
                             onToggle = { isExpanded = !isExpanded },
                         )
 
@@ -212,6 +290,7 @@ fun ProxyScreen(
                         ) {
                             ProxyNodeGrid(
                                 group = group,
+                                sortOption = sortOption,
                                 onSelect = { proxyName ->
                                     if (group.type.lowercase() == "selector") {
                                         viewModel?.selectProxy(group.name, proxyName)
@@ -227,6 +306,7 @@ fun ProxyScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -235,6 +315,8 @@ private fun ProxyGroupHeader(
     group: ProxyGroupUi,
     isExpanded: Boolean,
     iconCacheVersion: Int,
+    isTesting: Boolean,
+    onTestDelay: () -> Unit,
     onToggle: () -> Unit,
 ) {
     val rotation by animateFloatAsState(
@@ -296,6 +378,26 @@ private fun ProxyGroupHeader(
             fontSize = 14.sp,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )
+        Spacer(Modifier.width(8.dp))
+        IconButton(
+            onClick = onTestDelay,
+            enabled = !isTesting,
+            modifier = Modifier.size(24.dp),
+        ) {
+            if (isTesting) {
+                CircularProgressIndicator(
+                    size = 14.dp,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    imageVector = MiuixIcons.Refresh,
+                    contentDescription = stringResource(Res.string.proxy_test_group_delay),
+                    modifier = Modifier.size(16.dp),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
         Spacer(Modifier.width(8.dp))
         val layoutDirection = LocalLayoutDirection.current
         Image(
@@ -370,8 +472,12 @@ private fun DefaultGroupIcon(name: String) {
 @Composable
 private fun ProxyNodeGrid(
     group: ProxyGroupUi,
+    sortOption: Int,
     onSelect: (String) -> Unit,
 ) {
+    val sortedNodes = remember(group.all, group.delays, sortOption) {
+        sortNodes(group.all, group.delays, sortOption)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -379,7 +485,7 @@ private fun ProxyNodeGrid(
             .padding(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        group.all.chunked(2).forEach { row ->
+        sortedNodes.chunked(2).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -489,5 +595,35 @@ private fun ProxyNodeCard(
                 }
             }
         }
+    }
+}
+
+// 节点排序：sortOption 编码 = sortKeyIndex * 2 + (if reverse 1 else 0)
+// 0/1=默认 升/降，2/3=名称 升/降，4/5=延迟 升/降
+// 延迟排序时超时 (-1) 与未测 (null) 永远沉底，倒序也只翻转已测部分
+private fun sortNodes(
+    names: List<String>,
+    delays: Map<String, Int>,
+    sortOption: Int,
+): List<String> {
+    val key = sortOption / 2
+    val reverse = sortOption % 2 != 0
+    return when (key) {
+        1 -> {
+            val sorted = names.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+            if (reverse) sorted.reversed() else sorted
+        }
+
+        2 -> {
+            val (valid, invalid) = names.partition {
+                val d = delays[it]
+                d != null && d > 0
+            }
+            val sortedValid = valid.sortedBy { delays[it] ?: Int.MAX_VALUE }
+            val finalValid = if (reverse) sortedValid.reversed() else sortedValid
+            finalValid + invalid
+        }
+
+        else -> if (reverse) names.reversed() else names
     }
 }

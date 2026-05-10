@@ -75,10 +75,10 @@ class ConnectionViewModel : ViewModel() {
         if (query.isBlank()) return _uiState.value.connections
         return _uiState.value.connections.filter { conn ->
             conn.metadata.host.lowercase().contains(query) ||
-                conn.metadata.process.lowercase().contains(query) ||
-                conn.rule.lowercase().contains(query) ||
-                conn.metadata.destinationIP.contains(query) ||
-                conn.chains.any { it.lowercase().contains(query) }
+                    conn.metadata.process.lowercase().contains(query) ||
+                    conn.rule.lowercase().contains(query) ||
+                    conn.metadata.destinationIP.contains(query) ||
+                    conn.chains.any { it.lowercase().contains(query) }
         }.toPersistentList()
     }
 

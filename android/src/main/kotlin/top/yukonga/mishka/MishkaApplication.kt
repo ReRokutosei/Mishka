@@ -5,7 +5,6 @@ import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Process
 import android.util.Log
-import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +18,7 @@ import top.yukonga.mishka.service.ProfileFileOps
 import top.yukonga.mishka.service.RootHelper
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.concurrent.thread
 
 class MishkaApplication : Application() {
 

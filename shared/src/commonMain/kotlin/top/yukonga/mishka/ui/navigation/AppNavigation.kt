@@ -4,6 +4,7 @@ import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -12,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -24,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
@@ -47,6 +49,8 @@ import org.jetbrains.compose.resources.stringResource
 import top.yukonga.mishka.platform.BootStartManager
 import top.yukonga.mishka.platform.FilePicker
 import top.yukonga.mishka.platform.PlatformStorage
+import top.yukonga.mishka.ui.component.blur.BlurredBar
+import top.yukonga.mishka.ui.component.blur.rememberBlurBackdrop
 import top.yukonga.mishka.ui.navigation3.LocalNavigator
 import top.yukonga.mishka.ui.navigation3.Navigator
 import top.yukonga.mishka.ui.navigation3.Route
@@ -85,7 +89,9 @@ import top.yukonga.mishka.viewmodel.SubscriptionViewModel
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Sidebar
 import top.yukonga.miuix.kmp.icon.extended.Tune
@@ -126,6 +132,8 @@ fun AppNavigation(
 
     LaunchedEffect(mainPagerState.pagerState.currentPage) {
         mainPagerState.syncPage()
+        // 切到代理 Tab 时刷新 mihomo 缓存的 history.delay；URL-Test 组的周期测试结果靠这里同步到 UI
+        if (mainPagerState.pagerState.currentPage == 1) proxyViewModel?.loadProxies()
     }
 
     MainScreenBackHandler(mainPagerState, navigator)
@@ -359,43 +367,49 @@ private fun MainPage(
     val homeUiState = homeViewModel?.uiState?.collectAsStateWithLifecycle()?.value ?: HomeUiState()
     val selectedPage = mainPagerState.selectedPage
 
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = selectedPage == 0,
-                    onClick = { mainPagerState.animateToPage(0) },
-                    icon = MiuixIcons.Sidebar,
-                    label = stringResource(Res.string.nav_home),
-                )
-                NavigationBarItem(
-                    selected = selectedPage == 1,
-                    onClick = { mainPagerState.animateToPage(1) },
-                    icon = MiuixIcons.Tune,
-                    label = stringResource(Res.string.nav_proxy),
-                )
-                NavigationBarItem(
-                    selected = selectedPage == 2,
-                    onClick = { mainPagerState.animateToPage(2) },
-                    icon = MiuixIcons.UploadCloud,
-                    label = stringResource(Res.string.nav_subscription),
-                )
-                NavigationBarItem(
-                    selected = selectedPage == 3,
-                    onClick = { mainPagerState.animateToPage(3) },
-                    icon = MiuixIcons.Settings,
-                    label = stringResource(Res.string.nav_settings),
-                )
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                NavigationBar(color = barColor) {
+                    NavigationBarItem(
+                        selected = selectedPage == 0,
+                        onClick = { mainPagerState.animateToPage(0) },
+                        icon = MiuixIcons.Sidebar,
+                        label = stringResource(Res.string.nav_home),
+                    )
+                    NavigationBarItem(
+                        selected = selectedPage == 1,
+                        onClick = { mainPagerState.animateToPage(1) },
+                        icon = MiuixIcons.Tune,
+                        label = stringResource(Res.string.nav_proxy),
+                    )
+                    NavigationBarItem(
+                        selected = selectedPage == 2,
+                        onClick = { mainPagerState.animateToPage(2) },
+                        icon = MiuixIcons.UploadCloud,
+                        label = stringResource(Res.string.nav_subscription),
+                    )
+                    NavigationBarItem(
+                        selected = selectedPage == 3,
+                        onClick = { mainPagerState.animateToPage(3) },
+                        icon = MiuixIcons.Settings,
+                        label = stringResource(Res.string.nav_settings),
+                    )
+                }
             }
         },
     ) { padding ->
         val bottomPadding = padding.calculateBottomPadding()
 
         HorizontalPager(
+            modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
             state = mainPagerState.pagerState,
             verticalAlignment = Alignment.Top,
-            beyondViewportPageCount = 3,
         ) { page ->
             when (page) {
                 0 -> HomeScreen(

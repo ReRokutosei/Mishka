@@ -43,6 +43,7 @@ object RootTetherHijacker {
     private const val PRIORITY_RETURN_V4 = 8002   // 回程：to <hotspot_subnet>
     private const val PRIORITY_RETURN_V6 = 8003
     private const val TUN_TABLE = RuntimeOverrideBuilder.ROOT_TUN_TABLE
+
     // sing-tun 内部 nop marker（ruleStart + 10），goto 它会越过 sing-tun 的 9002 catch-all
     // 然后继续匹配后面的 Android 原生规则（iif-based forward rule at ~21000）
     private const val BYPASS_GOTO_TARGET = RuntimeOverrideBuilder.ROOT_TUN_RULE_INDEX + 10
@@ -51,14 +52,17 @@ object RootTetherHijacker {
     // mihomo tproxy listener 固定端口，与 mixed-port / redir-port 错开；
     // RuntimeOverrideBuilder 根据 probe 结果决定是否往 override 里写入该端口
     internal const val TPROXY_PORT = 7895
+
     // bit 24，避开 Android Netd 低 16 位 mark（permissions / explicit-socket / netId 等）。
     // 与 box_for_magisk / Surfing / ClashforMagisk 选值一致（0x01000000/0x01000000）。
     private const val TPROXY_MARK = 0x01000000
     private const val TPROXY_MASK = 0x01000000
+
     // fwmark 专用 route table；与 sing-tun 的 2022 / 9000 完全错开，
     // Android 内置 ip rule priority 从 10000+ 起，7999 安全
     private const val FWMARK_TABLE = 2024
     private const val PRIORITY_FWMARK = 7999
+
     // 自定义 mangle chain 名
     private const val CHAIN_NAME = "mishka_tether"
 
@@ -89,12 +93,12 @@ object RootTetherHijacker {
     fun probeTproxySupport(): Boolean {
         val probeName = "mishka_probe_${System.currentTimeMillis() % 1_000_000}"
         val cmd = "iptables -t mangle -N $probeName 2>/dev/null; " +
-            "iptables -t mangle -A $probeName -p tcp -j TPROXY " +
-            "--on-ip 127.0.0.1 --on-port 1 --tproxy-mark 0x1/0x1; " +
-            "rc=\$?; " +
-            "iptables -t mangle -F $probeName 2>/dev/null; " +
-            "iptables -t mangle -X $probeName 2>/dev/null; " +
-            "exit \$rc"
+                "iptables -t mangle -A $probeName -p tcp -j TPROXY " +
+                "--on-ip 127.0.0.1 --on-port 1 --tproxy-mark 0x1/0x1; " +
+                "rc=\$?; " +
+                "iptables -t mangle -F $probeName 2>/dev/null; " +
+                "iptables -t mangle -X $probeName 2>/dev/null; " +
+                "exit \$rc"
         val r = runWithOutput(cmd)
         val ok = r.code == 0
         Log.i(TAG, "probeTproxySupport: supported=$ok code=${r.code} out=${r.output.oneLine()}")
