@@ -346,7 +346,7 @@ GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build \
 
 **错误兜底**：用户面向异常走 `Throwable.describe()`（`message ?: simpleName ?: "Unknown error"`），避免 Ktor `ConnectException()` 等无参异常漏到 UI 显示 "null"；`SubscriptionFetcher` 显式检查 `response.status.isSuccess` + 空 body 抛 typed `ImportError`
 
-**其他**：`Activity configChanges=uiMode` 防深浅色切换重建；预测性返回手势走 HiddenApiBypass 反射 `setEnableOnBackInvokedCallback`（Android 14+ 可选）；`network_security_config.xml` 允许 localhost 明文（mihomo API HTTP）；`jniLibs.useLegacyPackaging = true` 确保 libmihomo.so 解压到 nativeLibraryDir
+**其他**：`Activity configChanges=uiMode` 防深浅色切换重建；预测性返回手势走 HiddenApiBypass 反射 `setEnableOnBackInvokedCallback`（Android 14+ 可选）；`network_security_config.xml` 全局 `cleartextTrafficPermitted=true`（订阅源常用 HTTP，对齐 CMFA UX；CMFA 因订阅 fetch 在 Go 侧绕过 Java 网络栈而无需此设置，Mishka commonMain Ktor 走 OkHttp 必须显式放行）；`jniLibs.useLegacyPackaging = true` 确保 libmihomo.so 解压到 nativeLibraryDir
 
 ## UI 规范
 
