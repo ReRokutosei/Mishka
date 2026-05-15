@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -91,7 +92,6 @@ import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowListPopup
@@ -125,187 +125,187 @@ fun ProxyScreen(
                     color = barColor,
                     scrollBehavior = scrollBehavior,
                     actions = {
-                    if (groups.isNotEmpty()) {
-                        Box {
-                            IconButton(
-                                onClick = { showSortPopup.value = true },
-                                holdDownState = showSortPopup.value,
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.Sort,
-                                    contentDescription = stringResource(Res.string.proxy_sort_title),
-                                    tint = MiuixTheme.colorScheme.onSurface,
-                                )
-                            }
-
-                            WindowListPopup(
-                                show = showSortPopup.value,
-                                popupPositionProvider = MenuPositionProvider,
-                                alignment = PopupPositionProvider.Align.TopEnd,
-                                onDismissRequest = { showSortPopup.value = false },
-                            ) {
-                                ListPopupColumn {
-                                    val sortResIds = listOf(
-                                        Res.string.proxy_sort_default,
-                                        Res.string.proxy_sort_name,
-                                        Res.string.proxy_sort_delay,
+                        if (groups.isNotEmpty()) {
+                            Box {
+                                IconButton(
+                                    onClick = { showSortPopup.value = true },
+                                    holdDownState = showSortPopup.value,
+                                ) {
+                                    Icon(
+                                        imageVector = MiuixIcons.Sort,
+                                        contentDescription = stringResource(Res.string.proxy_sort_title),
+                                        tint = MiuixTheme.colorScheme.onSurface,
                                     )
-                                    val currentKey = sortOption / 2
-                                    val isReverse = sortOption % 2 != 0
-                                    val groupSize = sortResIds.size + 1
+                                }
 
-                                    sortResIds.forEachIndexed { index, resId ->
+                                WindowListPopup(
+                                    show = showSortPopup.value,
+                                    popupPositionProvider = MenuPositionProvider,
+                                    alignment = PopupPositionProvider.Align.TopEnd,
+                                    onDismissRequest = { showSortPopup.value = false },
+                                ) {
+                                    ListPopupColumn {
+                                        val sortResIds = listOf(
+                                            Res.string.proxy_sort_default,
+                                            Res.string.proxy_sort_name,
+                                            Res.string.proxy_sort_delay,
+                                        )
+                                        val currentKey = sortOption / 2
+                                        val isReverse = sortOption % 2 != 0
+                                        val groupSize = sortResIds.size + 1
+
+                                        sortResIds.forEachIndexed { index, resId ->
+                                            DropdownImpl(
+                                                text = stringResource(resId),
+                                                optionSize = groupSize,
+                                                isSelected = currentKey == index,
+                                                index = index,
+                                                onSelectedIndexChange = {
+                                                    viewModel?.updateSortOption(
+                                                        index * 2 + if (isReverse) 1 else 0
+                                                    )
+                                                    showSortPopup.value = false
+                                                },
+                                            )
+                                        }
+                                        HorizontalDivider(
+                                            modifier = Modifier
+                                                .padding(horizontal = 20.dp, vertical = 4.dp),
+                                            thickness = 1.5.dp,
+                                        )
                                         DropdownImpl(
-                                            text = stringResource(resId),
+                                            text = stringResource(Res.string.proxy_sort_reverse),
                                             optionSize = groupSize,
-                                            isSelected = currentKey == index,
-                                            index = index,
+                                            isSelected = isReverse,
+                                            index = sortResIds.size,
                                             onSelectedIndexChange = {
                                                 viewModel?.updateSortOption(
-                                                    index * 2 + if (isReverse) 1 else 0
+                                                    currentKey * 2 + if (!isReverse) 1 else 0
                                                 )
                                                 showSortPopup.value = false
                                             },
                                         )
                                     }
-                                    HorizontalDivider(
-                                        modifier = Modifier
-                                            .padding(horizontal = 20.dp)
-                                            .fillMaxWidth(),
+                                }
+                            }
+
+                            Box {
+                                IconButton(
+                                    onClick = { showPopup.value = true },
+                                    holdDownState = showPopup.value,
+                                ) {
+                                    Icon(
+                                        imageVector = MiuixIcons.More,
+                                        contentDescription = stringResource(Res.string.common_more),
+                                        tint = MiuixTheme.colorScheme.onSurface,
                                     )
-                                    DropdownImpl(
-                                        text = stringResource(Res.string.proxy_sort_reverse),
-                                        optionSize = groupSize,
-                                        isSelected = isReverse,
-                                        index = sortResIds.size,
-                                        onSelectedIndexChange = {
-                                            viewModel?.updateSortOption(
-                                                currentKey * 2 + if (!isReverse) 1 else 0
-                                            )
-                                            showSortPopup.value = false
-                                        },
-                                    )
+                                }
+
+                                WindowListPopup(
+                                    show = showPopup.value,
+                                    popupPositionProvider = MenuPositionProvider,
+                                    alignment = PopupPositionProvider.Align.TopEnd,
+                                    onDismissRequest = { showPopup.value = false },
+                                ) {
+                                    ListPopupColumn {
+                                        DropdownImpl(
+                                            text = stringResource(Res.string.proxy_refresh_icon),
+                                            optionSize = 1,
+                                            isSelected = false,
+                                            index = 0,
+                                            onSelectedIndexChange = {
+                                                coroutineScope.launch { IconLoader.clear() }
+                                                iconCacheVersion++
+                                                showPopup.value = false
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
-
-                        Box {
-                            IconButton(
-                                onClick = { showPopup.value = true },
-                                holdDownState = showPopup.value,
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.More,
-                                    contentDescription = stringResource(Res.string.common_more),
-                                    tint = MiuixTheme.colorScheme.onSurface,
-                                )
-                            }
-
-                            WindowListPopup(
-                                show = showPopup.value,
-                                popupPositionProvider = MenuPositionProvider,
-                                alignment = PopupPositionProvider.Align.TopEnd,
-                                onDismissRequest = { showPopup.value = false },
-                            ) {
-                                ListPopupColumn {
-                                    DropdownImpl(
-                                        text = stringResource(Res.string.proxy_refresh_icon),
-                                        optionSize = 1,
-                                        isSelected = false,
-                                        index = 0,
-                                        onSelectedIndexChange = {
-                                            coroutineScope.launch { IconLoader.clear() }
-                                            iconCacheVersion++
-                                            showPopup.value = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
+                    },
                 )
             }
         },
     ) { innerPadding ->
         Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
-        if (groups.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = innerPadding.calculateTopPadding(), bottom = bottomPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(Res.string.proxy_no_groups),
-                    fontSize = 16.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-                Text(
-                    text = stringResource(Res.string.proxy_start_first),
-                    modifier = Modifier.padding(top = 6.dp),
-                    fontSize = 14.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scrollEndHaptic()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = bottomPadding,
-                ),
-            ) {
-                items(
-                    items = groups,
-                    key = { it.name },
-                    contentType = { "group" },
-                ) { group ->
-                    var isExpanded by rememberSaveable(group.name) { mutableStateOf(false) }
+            if (groups.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = innerPadding.calculateTopPadding(), bottom = bottomPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.proxy_no_groups),
+                        fontSize = 16.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Text(
+                        text = stringResource(Res.string.proxy_start_first),
+                        modifier = Modifier.padding(top = 6.dp),
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .scrollEndHaptic()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = bottomPadding,
+                    ),
+                ) {
+                    items(
+                        items = groups,
+                        key = { it.name },
+                        contentType = { "group" },
+                    ) { group ->
+                        var isExpanded by rememberSaveable(group.name) { mutableStateOf(false) }
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .padding(top = 12.dp),
-                    ) {
-                        ProxyGroupHeader(
-                            group = group,
-                            isExpanded = isExpanded,
-                            iconCacheVersion = iconCacheVersion,
-                            isTesting = group.name in uiState.testingGroups,
-                            onTestDelay = { viewModel?.testGroupDelay(group.name) },
-                            onToggle = { isExpanded = !isExpanded },
-                        )
-
-                        AnimatedVisibility(
-                            visible = isExpanded,
-                            enter = expandVertically(),
-                            exit = shrinkVertically(),
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .padding(top = 12.dp),
                         ) {
-                            ProxyNodeGrid(
+                            ProxyGroupHeader(
                                 group = group,
-                                sortOption = sortOption,
-                                onSelect = { proxyName ->
-                                    if (group.type.lowercase() == "selector") {
-                                        viewModel?.selectProxy(group.name, proxyName)
-                                    }
-                                },
+                                isExpanded = isExpanded,
+                                iconCacheVersion = iconCacheVersion,
+                                isTesting = group.name in uiState.testingGroups,
+                                onTestDelay = { viewModel?.testGroupDelay(group.name) },
+                                onToggle = { isExpanded = !isExpanded },
                             )
+
+                            AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically(),
+                                exit = shrinkVertically(),
+                            ) {
+                                ProxyNodeGrid(
+                                    group = group,
+                                    sortOption = sortOption,
+                                    onSelect = { proxyName ->
+                                        if (group.type.lowercase() == "selector") {
+                                            viewModel?.selectProxy(group.name, proxyName)
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
-                }
 
-                item(key = "bottom_spacer") {
-                    Spacer(Modifier.padding(bottom = 12.dp))
+                    item(key = "bottom_spacer") {
+                        Spacer(Modifier.padding(bottom = 12.dp))
+                    }
                 }
             }
-        }
         }
     }
 }
@@ -434,7 +434,7 @@ private fun GroupIcon(
                 contentDescription = name,
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(miuixShape(8.dp)),
+                    .clip(RoundedCornerShape(8.dp)),
             )
         } else {
             DefaultGroupIcon(name)
@@ -449,7 +449,7 @@ private fun DefaultGroupIcon(name: String) {
     Box(
         modifier = Modifier
             .size(36.dp)
-            .clip(miuixShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center,
     ) {
@@ -540,7 +540,7 @@ private fun ProxyNodeCard(
 
     Box(
         modifier = modifier
-            .clip(miuixShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .then(
                 if (isSelectable) Modifier.clickable(onClick = onClick) else Modifier
@@ -580,7 +580,7 @@ private fun ProxyNodeCard(
             if (type.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .clip(miuixShape(3.dp))
+                        .clip(RoundedCornerShape(3.dp))
                         .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                         .padding(horizontal = 5.dp, vertical = 1.dp),
                     contentAlignment = Alignment.Center,

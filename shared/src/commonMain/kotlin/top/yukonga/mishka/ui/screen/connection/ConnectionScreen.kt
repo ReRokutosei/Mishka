@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -92,7 +93,6 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowDialog
@@ -419,7 +419,7 @@ private fun ConnectionItem(
             // 网络类型 Badge (TCP/UDP)
             Box(
                 modifier = Modifier
-                    .clip(miuixShape(3.dp))
+                    .clip(RoundedCornerShape(3.dp))
                     .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                     .padding(horizontal = 5.dp, vertical = 1.dp),
                 contentAlignment = Alignment.Center,

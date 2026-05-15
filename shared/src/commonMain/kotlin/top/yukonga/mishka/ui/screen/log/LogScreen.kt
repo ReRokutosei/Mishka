@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +59,6 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -325,7 +325,7 @@ private fun LevelBadge(levelInfo: LevelInfo) {
     Box(
         modifier = Modifier
             .size(width = 20.dp, height = 16.dp)
-            .clip(miuixShape(3.dp))
+            .clip(RoundedCornerShape(3.dp))
             .background(levelInfo.color),
         contentAlignment = Alignment.Center,
     ) {
@@ -343,7 +343,7 @@ private fun LevelBadge(levelInfo: LevelInfo) {
 private fun ProtocolBadge(protocol: String) {
     Box(
         modifier = Modifier
-            .clip(miuixShape(3.dp))
+            .clip(RoundedCornerShape(3.dp))
             .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f))
             .padding(horizontal = 5.dp, vertical = 1.dp),
         contentAlignment = Alignment.Center,

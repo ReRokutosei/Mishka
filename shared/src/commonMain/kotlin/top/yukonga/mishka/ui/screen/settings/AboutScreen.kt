@@ -84,7 +84,6 @@ import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.shapes.SmoothRoundedCornerShape
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -286,7 +285,7 @@ private fun AboutContent(
                         if (blurEnabled) {
                             Modifier.textureBlur(
                                 backdrop = backdrop,
-                                shape = SmoothRoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 blurRadius = 150f,
                                 colors = BlurColors(blendColors = logoBlend),
                                 contentBlendMode = BlendMode.DstIn,
@@ -355,7 +354,7 @@ private fun AboutContent(
                                 if (blurEnabled) {
                                     Modifier.textureBlur(
                                         backdrop = backdrop,
-                                        shape = SmoothRoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         blurRadius = 60f,
                                         colors = BlurColors(blendColors = cardBlendColors),
                                         enabled = true,
@@ -393,7 +392,7 @@ private fun AboutContent(
                                 if (blurEnabled) {
                                     Modifier.textureBlur(
                                         backdrop = backdrop,
-                                        shape = SmoothRoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         blurRadius = 60f,
                                         colors = BlurColors(blendColors = cardBlendColors),
                                         enabled = true,

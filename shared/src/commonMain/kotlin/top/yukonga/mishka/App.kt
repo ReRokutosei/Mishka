@@ -54,10 +54,7 @@ fun App(
         }
     }
 
-    MiuixTheme(
-        controller = controller,
-        smoothRounding = false,
-    ) {
+    MiuixTheme(controller = controller) {
         CompositionLocalProvider(
             LocalContentColor provides MiuixTheme.colorScheme.onBackground,
         ) {

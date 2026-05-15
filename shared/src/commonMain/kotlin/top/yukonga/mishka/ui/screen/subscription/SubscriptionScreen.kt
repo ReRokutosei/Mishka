@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -76,7 +77,6 @@ import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -107,44 +107,44 @@ fun SubscriptionScreen(
                     title = stringResource(Res.string.subscription_title),
                     color = barColor,
                     scrollBehavior = scrollBehavior,
-                navigationIcon = if (onBack != null) {
-                    {
-                        IconButton(onClick = onBack) {
-                            val layoutDirection = LocalLayoutDirection.current
+                    navigationIcon = if (onBack != null) {
+                        {
+                            IconButton(onClick = onBack) {
+                                val layoutDirection = LocalLayoutDirection.current
+                                Icon(
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = stringResource(Res.string.common_back),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    modifier = Modifier.graphicsLayer {
+                                        scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+                                    },
+                                )
+                            }
+                        }
+                    } else {
+                        {}
+                    },
+                    actions = {
+                        if (uiState.subscriptions.any { it.url.isNotBlank() }) {
+                            IconButton(
+                                onClick = { viewModel.updateAllSubscriptions() },
+                                enabled = !uiState.isLoading,
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Refresh,
+                                    contentDescription = stringResource(Res.string.subscription_update_all),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                        IconButton(onClick = { viewModel.clearError(); onNavigateAdd() }) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = stringResource(Res.string.common_back),
+                                imageVector = MiuixIcons.Add,
+                                contentDescription = stringResource(Res.string.subscription_add),
                                 tint = MiuixTheme.colorScheme.onSurface,
-                                modifier = Modifier.graphicsLayer {
-                                    scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
-                                },
                             )
                         }
-                    }
-                } else {
-                    {}
-                },
-                actions = {
-                    if (uiState.subscriptions.any { it.url.isNotBlank() }) {
-                        IconButton(
-                            onClick = { viewModel.updateAllSubscriptions() },
-                            enabled = !uiState.isLoading,
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.Refresh,
-                                contentDescription = stringResource(Res.string.subscription_update_all),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                    IconButton(onClick = { viewModel.clearError(); onNavigateAdd() }) {
-                        Icon(
-                            imageVector = MiuixIcons.Add,
-                            contentDescription = stringResource(Res.string.subscription_add),
-                            tint = MiuixTheme.colorScheme.onSurface,
-                        )
-                    }
-                },
+                    },
                 )
             }
         },
@@ -291,7 +291,7 @@ private fun SubscriptionItem(
                     fontWeight = FontWeight(750),
                     color = activeColor,
                     modifier = Modifier
-                        .clip(miuixShape(6.dp))
+                        .clip(RoundedCornerShape(6.dp))
                         .background(activeColor.copy(alpha = 0.15f))
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )

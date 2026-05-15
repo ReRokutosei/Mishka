@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
@@ -67,7 +68,6 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowDialog
@@ -222,7 +222,7 @@ fun DnsQueryScreen(
                     ) {
                         Text(
                             text = uiState.error,
-                            color = androidx.compose.ui.graphics.Color(0xFFE53935),
+                            color = Color(0xFFE53935),
                         )
                     }
                 }
@@ -309,7 +309,7 @@ private fun DnsAnswerItem(answer: DnsAnswer) {
             Box(
                 modifier = Modifier
                     .padding(end = 10.dp)
-                    .clip(miuixShape(3.dp))
+                    .clip(RoundedCornerShape(3.dp))
                     .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                     .padding(horizontal = 5.dp, vertical = 1.dp),
                 contentAlignment = Alignment.Center,

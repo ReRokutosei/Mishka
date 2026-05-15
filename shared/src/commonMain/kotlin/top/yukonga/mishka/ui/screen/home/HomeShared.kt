@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -13,14 +14,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 
 @Composable
 internal fun BadgeLabel(text: String) {
     Text(
         text = text,
         modifier = Modifier
-            .clip(miuixShape(6.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(MiuixTheme.colorScheme.secondaryContainer)
             .padding(horizontal = 8.dp, vertical = 2.dp),
         fontSize = 11.sp,

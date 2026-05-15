@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,7 +22,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.mishka.util.AppIconCache
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.miuixShape
 
 @Composable
 actual fun AppIcon(
@@ -69,7 +69,7 @@ actual fun AppIcon(
                     Box(
                         modifier = Modifier
                             .size(size)
-                            .clip(miuixShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(MiuixTheme.colorScheme.secondaryContainer),
                     )
                 }
