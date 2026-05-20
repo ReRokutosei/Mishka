@@ -32,15 +32,17 @@ Compose 稳定性配置：[shared/compose_compiler_config.conf](shared/compose_c
 
 ```
 Mishka/
-├── buildSrc/                         ProjectConfig + GenerateVersionInfoTask
+├── buildSrc/                         ProjectConfig + GenerateVersionInfoTask + GoBuildTask（mihomo/JNI 通用 Go 交叉编译）
+├── mihomo/                           git submodule（YuKongA/mihomo branch Mishka，5 patch 见关键约束）
 ├── shared/src/
 │   ├── commonMain/kotlin/.../mishka/
 │   │   ├── App.kt                    根组件 + 主题配置
 │   │   ├── data/
 │   │   │   ├── api/                  MihomoApiClient（REST）+ MihomoWebSocket（流）+ MihomoConnectionManager（全 app 单例）
+│   │   │   ├── bridge/               MishkaCoreBridge expect（订阅导入 JNI 门面 + FetchProgress / CoreFetchResult / MishkaCoreError）
 │   │   │   ├── database/             Room 3.0 KMP（AppDatabase + 3 Entity + 3 DAO + ProfileTypeConverter）
 │   │   │   ├── model/                @Serializable 数据模型 + ProfileType enum + ConfigurationOverride
-│   │   │   └── repository/           MihomoRepository + SubscriptionRepository + SubscriptionFetcher + ProfileProcessor + OverrideJsonStore + SubscriptionProxyResolver
+│   │   │   └── repository/           MihomoRepository + SubscriptionRepository + ProfileProcessor（3 阶段，JNI 化）+ OverrideJsonStore + SubscriptionProxyResolver
 │   │   ├── platform/                 expect 声明（含 Toast）+ ProfileFileManager 接口 + ProxyServiceBridge
 │   │   ├── ui/
 │   │   │   ├── navigation/           AppNavigation（主导航树 + HorizontalPager）
@@ -56,18 +58,20 @@ Mishka/
 │   │   ├── drawable/ic_launcher_foreground.xml  About 页 hero 图标（Android Vector，KMP 共享）
 │   │   ├── values/strings.xml        英文默认字符串
 │   │   └── values-zh-rCN/strings.xml 中文字符串
-│   ├── androidMain/                  actual 实现 + AppDatabaseBuilder
+│   ├── androidMain/
+│   │   ├── kotlin/                   actual 实现 + AppDatabaseBuilder（含 MishkaCoreBridge.android.kt 走 JNI）
+│   │   └── native/mishka_core/       Go cgo c-shared 源（main.go + fetch.go + go.mod），编译为 libmishka_core.so；replace mihomo → ../../../../../mihomo
 │   └── desktopMain/                  actual 桩实现 + AppDatabaseBuilder
 ├── android/src/main/
 │   ├── kotlin/.../mishka/
 │   │   ├── MainActivity.kt           应用入口
-│   │   ├── MishkaApplication.kt      全局初始化（通知渠道 + GeoIP 提取 + 预测性返回手势 + 旧 root 文件 chown 迁移）
-│   │   └── service/                  服务组件（含 ROOT 模式 + RuntimeOverrideBuilder + MihomoPrefetcher）
+│   │   ├── MishkaApplication.kt      全局初始化（通知渠道 + GeoIP 提取 + MishkaCoreBridge.init + 预测性返回手势 + 旧 root 文件 chown 迁移）
+│   │   └── service/                  服务组件（含 ROOT 模式 + RuntimeOverrideBuilder + MihomoRunner）
 │   ├── res/
 │   │   ├── values/strings.xml        Android 层英文字符串（通知/Tile）
 │   │   └── values-zh-rCN/strings.xml Android 层中文字符串
-│   ├── cpp/                          process_helper.c（JNI fork+exec）
-│   └── jniLibs/arm64-v8a/            libmihomo.so
+│   ├── cpp/                          process_helper.c（JNI fork+exec）+ mishka_jni.c（薄 JNI 桥）+ mihomo_wrapper.c（薄 PIE 可执行，dlopen libmihomo）+ CMakeLists.txt
+│   └── jniLibs/arm64-v8a/            libmihomo.so（统一 cgo c-shared，含 mihomo 全部代码 + JNI 导出 + mihomoEntry 入口；订阅导入与 runtime 共享）
 └── desktop/                          Desktop 预留入口
 ```
 
@@ -88,8 +92,10 @@ MainActivity → App → AppNavigation
 
 ### 核心模式
 
-- **通信方案**：mihomo RESTful API + WebSocket（非 JNI），代码在 commonMain 跨平台共享
+- **通信方案**：runtime（traffic / logs / connections / proxy select / provider 刷新）走 subprocess + Ktor REST + WebSocket，三模式共用；订阅导入（fetch + provider prefetch + Parse）走 JNI in-process，由 [MishkaCoreBridge](shared/src/commonMain/kotlin/top/yukonga/mishka/data/bridge/MishkaCoreBridge.kt) 调 libmihomo.so 的 cgo 导出
+- **统一 .so 架构**：[libmihomo.so](shared/src/androidMain/native/mishka_core/)（cgo c-shared，~56MB）同时承担 JNI 导出 + `mihomoEntry(argc, argv)` runtime 入口；[libmihomo_runner.so](android/src/main/cpp/mihomo_wrapper.c)（C PIE，~6KB）由 MihomoRunner fork+exec 后 dlopen libmihomo.so 调 mihomoEntry。一份 mihomo 代码两条路径共用
 - **mihomo 客户端共享**：`MihomoConnectionManager`（application-scoped 单例，由 `MishkaApplication.connectionManager` 持有）订阅 `ProxyServiceBridge.state`，`Running` 时构造新 `MihomoRepository`，其他状态置 null；切换前同步 close 旧实例，杜绝 Ktor `HttpClient` 泄漏。所有消费方（5 个 ViewModel + `DynamicNotificationManager`）只 collect `connectionManager.repository: StateFlow<MihomoRepository?>`
+- **MishkaCoreBridge**：`init(homeDir, userAgent)` 在 `MishkaApplication.onCreate` 一次性调用，homeDir 指向共享 GeoIP 目录 `files/mihomo/geodata/`；`fetchAndValid` 内部分 token、150ms 轮询进度、取消时调 `nativeCancel` 让 Go ctx 进入 Done
 - **导航**：miuix NavDisplay + 自定义 Navigator（push/pop/popUntil + navigateForResult）+ LocalNavigator
 - **主页 Tab**：HorizontalPager + MainPagerState + NavigationBar（4 Tab）
 - **隧道三模式**：VPN / ROOT TUN / ROOT TPROXY（`TunMode { Vpn, RootTun, RootTproxy }`）
@@ -103,12 +109,12 @@ MainActivity → App → AppNavigation
 - **状态桥接**：ProxyServiceBridge（全局 StateFlow + TunMode），Service 写入、ViewModel 读取
 - **进程模型**：单进程（VpnService 和 UI 同进程），ROOT 模式 mihomo 为独立 root 进程
 - **数据持久化**：Room 3.0 KMP（结构化数据）+ PlatformStorage（简单偏好）+ StorageKeys（key 常量）+ OverrideJsonStore（`override.user.json` + ConfigurationOverride `@Serializable`）；store 自带 `state: StateFlow<ConfigurationOverride>` + `update(transform)`，Settings 三个切片 VM 共享同一实例
-- **订阅管理**：Pending → Processing → Imported 三阶段沙箱，`ProfileProcessor` 编排 snapshot → fetch → validate → prefetch → commit 五阶段；processLock 串行，profileLock 守护 DB 一致性
-- **订阅 HTTP**：Ktor + HttpTimeout（connect 30s / request 60s），UA `ClashMetaForAndroid/{version}`（订阅服务白名单）；状态码 / 空 body 检查 → `ImportError`；不做 base64/V2Ray 转换，原始 YAML 直接交 mihomo
-- **订阅下载走代理**：`SubscriptionProxyResolver` 按「开关 + 代理运行中 + 可解析 mixed-port」返回 proxy URL 或 null；`SubscriptionFetcher` 按需配 proxy，网络层异常自动 fallback 直连；`MihomoValidator` / `MihomoPrefetcher` 两条 mihomo 子进程路径都注入 `HTTPS_PROXY`/`HTTP_PROXY` env，`ProfileProcessor` 在 validate 前 resolve 一次复用给两阶段。validate 必须走代理：mihomo `-t` 解析 `GEOIP`/`GEOSITE`/`IP-ASN` 规则触发对应数据库 init，缺失则按 mihomo 内部 90s timeout 走 [downloadToPath](D:/GitHub/mihomo/component/geodata/init.go#L71) 自动拉取，Mishka 自身被排除在 VPN/TUN/TPROXY 外（直连国内 github 慢），不注入代理会撞外层超时。两子进程超时统一 60s（proxy）/ 120s（direct）
-- **Pipeline 可取消**：子进程 200ms 轮询 + `ensureActive()` 响应取消，finally `destroyForcibly`；`ImportProgressDialog` 可选 `onCancel`；`cancelCurrentUpdate` 先同步 `clearProgress()` 让 UI 立即响应，再 cancel 协程
-- **GeoIP 预制**：构建时 DownloadGeoFilesTask 下载 geoip.metadb/geosite.dat/ASN.mmdb 到 assets，启动时提取到 geodata/ 共享目录 + 符号链接
-- **配置校验**：`mihomo -t -f processing/config.yaml`（不传 `--override-json`；config 含 GEOIP/GEOSITE/IP-ASN 规则时 mihomo 会触发数据库 init，按 proxy 注入与否分档超时 60s/120s）
+- **订阅管理**：Pending → Processing → Imported 三阶段沙箱，`ProfileProcessor` 编排 snapshot → fetchAndValid（JNI 一次完成 fetch + provider prefetch + Parse 校验） → commit；processLock 串行，profileLock 守护 DB 一致性
+- **订阅 HTTP**：mihomo `component/http.HttpRequest`（in-process，cgo），60s context timeout；UA `ClashMetaForAndroid/{version}`（订阅服务白名单）；非 2xx / 空 body → `MishkaCoreError`；不做 base64/V2Ray 转换，原始 YAML 直接交 mihomo
+- **订阅下载走代理**：`SubscriptionProxyResolver` 按「开关 + 代理运行中 + 可解析 mixed-port」返回 proxy URL 或 null；`ProfileProcessor` resolve 后传 `httpProxy` 给 bridge；native glue 在 fetchAndValid 入口 `os.Setenv("HTTPS_PROXY"/"HTTP_PROXY")` defer Unsetenv，覆盖订阅 fetch + provider prefetch + GeoIP 自动下载（mihomo `downloadToPath` 用 Go stdlib `http.Get` 读 env）。processLock 串行保证 set/unset 并发安全。无代理时直连，由 mihomo 内部 90s timeout 兜底
+- **Pipeline 可取消**：协程 cancel → `nativeCancel(token)` → Go ctx Done → native 立即返回 "context canceled"；`ImportProgressDialog` 可选 `onCancel`；`cancelCurrentUpdate` 先同步 `clearProgress()` 让 UI 立即响应，再 cancel 协程
+- **GeoIP 预制**：构建时 DownloadGeoFilesTask 下载 geoip.metadb/geosite.dat/ASN.mmdb 到 assets，启动时提取到 `files/mihomo/geodata/`。JNI 路径用 `mishkaCoreInit(geodataDir)` 把 mihomo 全局 homeDir 指到这里；subprocess runtime 仍按 `-d workDir` + symlink 复用同一份 GeoIP
+- **配置校验**：JNI in-process `MishkaCoreBridge.fetchAndValid` 调用 mihomo `config.ParseRawConfig`，含 GEOIP/GEOSITE/IP-ASN 规则时触发数据库 init（缺失则走代理下载到 geodata/）
 - **国际化**：英文 + 中文（zh-rCN），Compose Resources `stringResource()` + Android `getString()`；日志消息英文，代码注释中文
 
 ## 数据库架构（Room 3.0 KMP）
@@ -131,12 +137,13 @@ MainActivity → App → AppNavigation
 
 ```
 CREATE → Pending ✓, Imported ∅
-  → APPLY（processLock 串行，5 阶段）：
+  → APPLY（processLock 串行，3 阶段）：
       ① snapshot（profileLock 内）：query Pending + enforceFieldValid + prepareProcessing（清 processing/ + 复制 pending/{uuid}/ → processing/）
-      ② fetch（锁外，可取消，仅 Url）：HTTP 下载 → writeProcessingConfig → subscription-userinfo 头解析；按需配 proxy + 网络层异常 fallback 直连
-      ③ validate（锁外，可取消）：ensureGeodataAvailable → `mihomo -t -f processing/config.yaml`（只 parse 不碰网）
-      ④ prefetch（锁外，可取消，best-effort）：`mihomo -prefetch` 并发下载 HTTP provider 到 `processing/` 相对路径下；失败仅记日志不阻塞 commit
-      ⑤ commit（profileLock 内，`withContext(NonCancellable)` 原子）：snapshot 一致性检查 → commitProcessingToImported（清 imported/{uuid}/ + 复制 processing/ → imported/{uuid}/ + 删 pending/{uuid}/）→ DB 更新
+      ② fetchAndValid（锁外，可取消，JNI in-process 一次完成 fetch + provider prefetch + Parse）：
+         - Url 类型：force=true，bridge 删旧 config.yaml 后由 mihomo `clashHttp.HttpRequest` 重新下载到 processing/config.yaml；并发 prefetch 所有 proxy-provider / rule-provider 到 processing/providers/；Parse 校验
+         - File 类型：force=false，processing/config.yaml 已由 prepareProcessing 复制就位，bridge 跳过 fetch，直接 prefetch + Parse
+         - httpProxy 由 SubscriptionProxyResolver.resolve() 决定（运行中代理 + 开关），透传到 native glue 的 HTTPS_PROXY env
+      ③ commit（profileLock 内，`withContext(NonCancellable)` 原子）：snapshot 一致性检查 → commitProcessingToImported（清 imported/{uuid}/ + 复制 processing/ → imported/{uuid}/ + 删 pending/{uuid}/）→ DB 更新
   → 失败：cleanupProcessing（走 NonCancellable）；pending/ 与 imported/ 都不动，可 retry
   → RELEASE（放弃）：删 Pending DB + 删 pending/{uuid}/
 
@@ -239,10 +246,9 @@ files/mihomo/
 | RuntimeOverrideBuilder     | 运行时 override.run.json 装配（按 Submode = Vpn/RootTun/RootTproxy 分支：TUN fd / auto-route+include/exclude-package / tproxy-port+routing-mark+dns.listen） |
 | ProfileFileOps             | 订阅目录管理（imported/pending/processing/runtime + GeoIP + ROOT 沙箱）                                                                                      |
 | AndroidProfileFileManager  | ProfileFileManager 接口的 Android 实现                                                                                                                       |
-| MihomoRunner               | mihomo 进程管理（VPN: JNI fork+exec / ROOT: su）                                                                                                             |
-| MihomoValidator            | mihomo -t 配置校验（ProcessBuilder，HTTPS_PROXY env，代理 60s/直连 120s，200ms 轮询响应协程取消）                                                            |
-| MihomoPrefetcher           | mihomo -prefetch provider 预下载（HTTPS_PROXY env，代理 60s/直连 120s，可取消）                                                                              |
-| ProcessHelper              | JNI 包装（nativeForkExec/nativeKill/nativeWaitpid）                                                                                                          |
+| MihomoRunner               | mihomo runtime 进程管理（VPN: JNI fork+exec / ROOT: su）                                                                                                     |
+| MishkaCoreBridge           | 订阅导入 JNI 门面：libmishka_jni.so（C 桥）+ libmishka_core.so（cgo c-shared，含 mihomo）；fetch + provider prefetch + Parse 一次完成                       |
+| ProcessHelper              | JNI 包装（nativeForkExec/nativeKill/nativeWaitpid，仅 runtime 用）                                                                                           |
 | NotificationHelper         | 三层通知渠道（VPN/更新进度/更新结果）                                                                                                                        |
 | ProfileReceiver            | AlarmManager 调度自动更新                                                                                                                                    |
 | ProfileWorker              | 前台服务执行后台配置更新                                                                                                                                     |
@@ -257,24 +263,31 @@ ConnectionInfo, DelayResult, DnsQuery, LogMessage, MemoryData, MihomoConfig, Pro
 
 ## 构建命令
 
-```bash
-# 编译 mihomo 二进制（必须用 Mishka fork 源码：含 --override-json / --prefetch flag、RawTun.AutoDetectInterface json tag、patch_mishka.go DNS fallback）
-cd D:/GitHub/mihomo
-GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build \
-  -tags "cmfa,mishka,with_gvisor" -trimpath \
-  -ldflags "-s -w -X 'github.com/metacubex/mihomo/constant.Version=v1.19.25+'" \
-  -o /path/to/Mishka/android/src/main/jniLibs/arm64-v8a/libmihomo.so .
+mihomo 通过 git submodule 引入 Mishka fork（`mihomo/`，branch `Mishka`）。Gradle 自动驱动两条 Go 构建任务，产物落到 `android/src/main/jniLibs/<ABI>/`：
 
-# 构建 APK（assemble 自动触发 downloadGeoFiles 下载 GeoIP 到 assets/）
+```bash
+# 首次 clone 后或拉新 commit 后同步 submodule
+git submodule update --init --recursive
+
+# 构建 APK（assemble 自动触发 buildMihomo / downloadGeoFiles / CMake）
 ./gradlew :android:assembleDebug
 ./gradlew :android:assembleRelease
 ```
+
+Go 构建任务（[GoBuildTask](buildSrc/src/main/kotlin/GoBuildTask.kt)）：
+- `buildMihomo_arm64_v8a` → `libmihomo.so`（cgo c-shared，单一统一库 ~56MB）。CGO_ENABLED=1，需 NDK clang（从 `androidComponents.sdkComponents.ndkDirectory` 读）。ldflags 注入 `-Wl,-soname,libmihomo.so` 让消费方 DT_NEEDED 不烙构建路径
+
+CMake 任务自动 `dependsOn(buildMihomo)`，CMake 产出两个轻量 native 文件链 libmihomo.so（IMPORTED + IMPORTED_SONAME）：
+- `libmihomo_runner.so` (~6KB)：PIE 可执行 wrapper（[mihomo_wrapper.c](android/src/main/cpp/mihomo_wrapper.c)），dlopen 同目录 libmihomo.so + dlsym `mihomoEntry` + 透传 argv；MihomoRunner fork+exec 它启 runtime
+- `libmishka_jni.so` (~6KB)：薄 JNI 桥（[mishka_jni.c](android/src/main/cpp/mishka_jni.c)），翻译 Kotlin `MishkaCoreBridge.nativeXxx` 到 libmihomo 的 C ABI
+
+手动构建只在调试 native 出错时需要；版本字符串由 `gradle.properties` 的 `mihomo.version` 注入。
 
 ## 关键架构约束
 
 不读代码看不出来的约束。违反会直接踩坑。
 
-**Ktor HttpClient 所有权**：禁止任何模块直接 `MihomoApiClient(...)` / `MihomoWebSocket(...)`；统一从 `MishkaApplication.instance.connectionManager.repository: StateFlow<MihomoRepository?>` 订阅。`MihomoConnectionManager` 是唯一持有 `close()` 责任的方，按 `ProxyServiceBridge.state` 自动 connect/disconnect、原子 close 旧 + new 新——不做 endpoint 比对（attach 重连多一次重建 < 50ms，胜过状态机比对出 race 的代价）。新增消费方仅 collect repository 即可；ViewModel 的 `setRepository(repo)` 仅做信号传递，不承担 close 责任。例外：`SubscriptionFetcher` / `SubscriptionProxyResolver` 因下载/查询场景独立于 mihomo 实时连接，可自建短生命周期 HttpClient，但必须 `client.use{}` 或 try/finally close。
+**Ktor HttpClient 所有权**：禁止任何模块直接 `MihomoApiClient(...)` / `MihomoWebSocket(...)`；统一从 `MishkaApplication.instance.connectionManager.repository: StateFlow<MihomoRepository?>` 订阅。`MihomoConnectionManager` 是唯一持有 `close()` 责任的方，按 `ProxyServiceBridge.state` 自动 connect/disconnect、原子 close 旧 + new 新——不做 endpoint 比对（attach 重连多一次重建 < 50ms，胜过状态机比对出 race 的代价）。新增消费方仅 collect repository 即可；ViewModel 的 `setRepository(repo)` 仅做信号传递，不承担 close 责任。例外：`SubscriptionProxyResolver` 因 mixed-port 探测场景独立于 mihomo 实时连接，可自建短生命周期 HttpClient，但必须 `client.use{}` 或 try/finally close。订阅 fetch 自身已 in-process 化（[MishkaCoreBridge.fetchAndValid](shared/src/commonMain/kotlin/top/yukonga/mishka/data/bridge/MishkaCoreBridge.kt)），不再用 Ktor。
 
 **Override 注入**：所有 override 走 `--override-json` CLI flag + JSON 文件，Kotlin 侧零 YAML 改写。用户设置 `OverrideJsonStore.update { ... }` → `override.user.json`，启动时 `RuntimeOverrideBuilder` 叠加 TUN fd / AppProxy / rootMode → `override.run.json`。`secret` / `external-controller` 走 `--secret` / `--ext-ctl` CLI flag 不进 JSON。
 
@@ -294,13 +307,21 @@ GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build \
 
 **CMFA embed mode 禁 HTTP 配置 API**：`PATCH/PUT /configs` / `POST /restart` / `POST /configs/geo` / `PUT/PATCH /rules` / `POST /upgrade` 全部 404。**绝不添加** `patchConfig`/`restart` 方法，所有配置修改走 `OverrideJsonStore.update { ... }` + `serviceController.restart()`，UI 用 `RestartRequiredHint` Card 提示。
 
-**mihomo 子进程规则**：Provider 预下载只走 `mihomo -prefetch`，stdout 必须独立 daemon 线程读（否则 `waitFor(timeout)` 失效），200ms 轮询 + `ensureActive()` 响应取消。
+**订阅导入走 JNI in-process**：fetch + provider prefetch + Parse 三步走 [MishkaCoreBridge.fetchAndValid](shared/src/commonMain/kotlin/top/yukonga/mishka/data/bridge/MishkaCoreBridge.kt)，禁止再起 mihomo 子进程做这些事。`MishkaApplication.onCreate` 必须先 `extractGeoFiles()` 再 `MishkaCoreBridge.init(geodataDir, userAgent)`——后者 `constant.SetHomeDir` 必须指向已就位的 GeoIP 目录。runtime 仍是 subprocess 路径，与 JNI 路径互不干扰
+
+**JNI 库加载顺序**：`libmishka_jni.so` 链接依赖 libmihomo.so 的导出符号，`System.loadLibrary("mihomo")` 必须先于 `loadLibrary("mishka_jni")`，否则 jni 库找不到符号
+
+**libmihomo.so 必须显式设 SONAME**：cgo c-shared 默认不写 SONAME，消费方链接器会把构建期 .so 绝对路径烙进 DT_NEEDED，运行时 dlopen 报 `UnsatisfiedLinkError: library "..." not found`。两边对齐：[GoBuildTask](buildSrc/src/main/kotlin/GoBuildTask.kt) 给 ldflags 加 `-extldflags=-Wl,-soname,libmihomo.so`，CMake `IMPORTED_SONAME` 一致
+
+**libmihomo_runner.so 是 PIE wrapper**：[mihomo_wrapper.c](android/src/main/cpp/mihomo_wrapper.c) 产出的 ~6KB 可执行，读 `/proc/self/exe` 推同目录 → dlopen libmihomo.so → dlsym `mihomoEntry` → 透传 argv。新加 CLI flag 必须同步注册到 mishka_core/runtime.go 的 `flag.NewFlagSet`，否则 fork+exec 时被 ExitOnError 拦截。`RootHelper.cleanupOrphanedMihomo` 按 `libmihomo_runner.so` cmdline 匹配孤儿进程
+
+**cgo `*C.char` 必须 Go 侧释放**：libmihomo.so 通过 `//export` 返回的字符串内存属于 Go runtime，C 侧只能调 `mishkaFreeString()`，绝不能 `free()`，否则 cgo 堆损坏
 
 **Mishka 自身包名必须绕过 TUN/VPN**：`ProcessBuilder` 子进程 HTTP 被代理捕获会永久阻塞；ROOT 三种 AppProxyMode 都把 `packageName` 从 include 剔除或塞进 exclude，VPN `AllowSelected` 分支先过滤 self 再 addAllowed，过滤后空列表退化到 `addDisallowedApplication(self)`。
 
 **协程锁规则**：`kotlinx.coroutines.sync.Mutex` **不可重入**。`updateImported`/`commitPending`/`queryImported`/`queryPending` 被 `ProfileProcessor` 在 `withProfileLock { ... }` 内调用，**不能自己加** `profileLock.withLock`；`create`/`patch`/`release`/`clone`/`delete` 直接被 ViewModel 调用，**保留自身** `profileLock.withLock`。
 
-**Pipeline 协程取消语义**：外层 `runProcess` 可取消，仅 commit 阶段包 `withContext(NonCancellable)` 保证文件 swap + DB 更新原子；catch 块 `cleanupProcessing` 也走 NonCancellable。`cancelCurrentUpdate` 先同步 `clearProgress()` 让 Dialog 立即消失，再 `currentJob?.cancel()` 让协程后台收尾
+**Pipeline 协程取消语义**：外层 `runProcess` 可取消，仅 commit 阶段包 `withContext(NonCancellable)` 保证文件 swap + DB 更新原子；catch 块 `cleanupProcessing` 也走 NonCancellable。`cancelCurrentUpdate` 先同步 `clearProgress()` 让 Dialog 立即消失，再 `currentJob?.cancel()` 让协程后台收尾。`MishkaCoreBridge.fetchAndValid` 内部 try/catch 任何 Throwable 时调 `nativeCancel(token)`，让 Go ctx 进入 Done，native 函数立即返回 `error: context canceled`（HTTP read 中的请求要等到下一次 ctx 检查，通常 <100ms）
 
 **ROOT runtime/ 沙箱**：ROOT mihomo 工作目录是独立 `runtime/{uuid}/`（从 imported/ 复制），不碰 imported/。启停钩子：`startProxy` 新鲜启动前 `prepareRootRuntime`；stop/restart/进程监控三条死亡路径都在 `clearPersistedState` 之前 `cleanupRootRuntime`；attach 分支**不重建** runtime/。存量旧 root:root 遗孤由 `MishkaApplication` 后台线程一次性 `su chown -R $APP_UID imported/` 迁移（`StorageKeys.MIGRATION_ROOT_RECLAIM_DONE` 打标）
 

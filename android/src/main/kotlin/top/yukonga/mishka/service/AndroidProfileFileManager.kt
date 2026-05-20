@@ -30,14 +30,6 @@ class AndroidProfileFileManager(private val context: Context) : ProfileFileManag
         ProfileFileOps.commitProcessingToImported(context, uuid)
     }
 
-    override suspend fun validate(workDir: String, configFileName: String, proxyUrl: String?, onProgress: ((String) -> Unit)?): String? {
-        return MihomoValidator.validate(context, workDir, configFileName, proxyUrl, onProgress)
-    }
-
-    override suspend fun prefetch(workDir: String, configFileName: String, proxyUrl: String?, onProgress: ((String) -> Unit)?): Boolean {
-        return MihomoPrefetcher.prefetch(context, workDir, configFileName, proxyUrl, onProgress)
-    }
-
     override fun getMihomoWorkDir(): String = ConfigGenerator.getWorkDir(context).absolutePath
 
     override fun readMihomoFile(relativePath: String): String? {
@@ -49,14 +41,6 @@ class AndroidProfileFileManager(private val context: Context) : ProfileFileManag
         val file = File(ConfigGenerator.getWorkDir(context), relativePath)
         file.parentFile?.mkdirs()
         file.writeText(content)
-    }
-
-    override fun ensureGeodataAvailable(workDir: String) {
-        ProfileFileOps.ensureGeodataLinks(context, File(workDir))
-    }
-
-    override fun collectGeodata(workDir: String) {
-        ProfileFileOps.collectGeodataFiles(context, File(workDir))
     }
 
     override fun getImportedDir(uuid: String): String {

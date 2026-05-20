@@ -122,10 +122,10 @@ object RootHelper {
 
     fun killMihomoByName(tunDevice: String = "Mishka") {
         try {
-            Log.w(TAG, "Falling back to pkill for libmihomo.so")
-            runRootCommand("pkill -TERM -f libmihomo.so")
+            Log.w(TAG, "Falling back to pkill for libmihomo_runner.so")
+            runRootCommand("pkill -TERM -f libmihomo_runner.so")
             Thread.sleep(1000)
-            runRootCommand("pkill -9 -f libmihomo.so")
+            runRootCommand("pkill -9 -f libmihomo_runner.so")
             cleanupRootNetwork(tunDevice)
         } catch (_: Exception) {
         }
@@ -192,25 +192,25 @@ object RootHelper {
         } ?: "true"
 
         val script = """
-            pgrep -f libmihomo.so >/dev/null 2>&1 && {
-                pkill -TERM -f libmihomo.so 2>/dev/null
+            pgrep -f libmihomo_runner.so >/dev/null 2>&1 && {
+                pkill -TERM -f libmihomo_runner.so 2>/dev/null
                 i=0; while [ ${'$'}i -lt 6 ]; do
                     sleep 0.5
-                    pgrep -f libmihomo.so >/dev/null 2>&1 || break
+                    pgrep -f libmihomo_runner.so >/dev/null 2>&1 || break
                     i=${'$'}((i+1))
                 done
-                pgrep -f libmihomo.so >/dev/null 2>&1 && {
-                    pkill -KILL -f libmihomo.so 2>/dev/null
+                pgrep -f libmihomo_runner.so >/dev/null 2>&1 && {
+                    pkill -KILL -f libmihomo_runner.so 2>/dev/null
                     i=0; while [ ${'$'}i -lt 4 ]; do
                         sleep 0.5
-                        pgrep -f libmihomo.so >/dev/null 2>&1 || break
+                        pgrep -f libmihomo_runner.so >/dev/null 2>&1 || break
                         i=${'$'}((i+1))
                     done
                 }
             }
             # 进程清理后（或本就不存在孤儿），兜底清 TUN 避免下次启动 EEXIST
             $tunCleanupLine
-            pgrep -f libmihomo.so >/dev/null 2>&1 && exit 1
+            pgrep -f libmihomo_runner.so >/dev/null 2>&1 && exit 1
             exit 0
         """.trimIndent()
 

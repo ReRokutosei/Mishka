@@ -49,8 +49,8 @@ object RootTproxyApplier {
     private const val CHAIN_DNS_PRE = "mishka_dns_pre"
     private const val CHAIN_DNS_OUT = "mishka_dns_out"
 
-    // xt_comment 前缀：所有 iptables 规则都打此标签，便于 [anyRulesPresent] 精确探测
-    // 以及与第三方代理模块（box_for_magisk / CFMA 等）共存时的诊断
+    // xt_comment 前缀：所有 iptables 规则都打此标签，便于 [anyRulesPresent] 精确探测，
+    // 与第三方代理模块共存时也方便辨识来源
     internal const val COMMENT_TAG_PREFIX = "mishka:tproxy:"
 
     /** 生成 `-m comment --comment "mishka:tproxy:<label>"` 片段；追加到 iptables 命令末尾。 */

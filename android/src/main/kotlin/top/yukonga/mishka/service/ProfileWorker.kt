@@ -17,7 +17,6 @@ import top.yukonga.mishka.R
 import top.yukonga.mishka.data.database.getAppDatabase
 import top.yukonga.mishka.data.repository.OverrideJsonStore
 import top.yukonga.mishka.data.repository.ProfileProcessor
-import top.yukonga.mishka.data.repository.SubscriptionFetcher
 import top.yukonga.mishka.data.repository.SubscriptionProxyResolver
 import top.yukonga.mishka.data.repository.SubscriptionRepository
 import top.yukonga.mishka.platform.PlatformStorage
@@ -103,11 +102,7 @@ class ProfileWorker : Service() {
         )
         val overrideStore = OverrideJsonStore(fileManager)
         val proxyResolver = SubscriptionProxyResolver(storage, overrideStore)
-        val fetcher = SubscriptionFetcher(
-            userAgent = "ClashMetaForAndroid/${misc.VersionInfo.VERSION_NAME}",
-            proxyUrlProvider = { proxyResolver.resolve() },
-        )
-        val processor = ProfileProcessor(repo, fileManager, fetcher, proxyResolver)
+        val processor = ProfileProcessor(repo, fileManager, proxyResolver)
 
         try {
             notificationManager.notify(

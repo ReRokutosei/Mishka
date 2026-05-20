@@ -26,32 +26,6 @@ interface ProfileFileManager {
     /** 清 imported/{uuid}/ → 复制 processing/ → imported/{uuid}/ → 删 pending/{uuid}/。 */
     fun commitProcessingToImported(uuid: String)
 
-    // === 校验（基于 processing 工作目录） ===
-    /**
-     * 使用 mihomo -t 校验配置。mihomo 解析 GEOIP/GEOSITE/IP-ASN 规则时若本地数据库缺失会触发 HTTP 下载，
-     * 因此需要 [proxyUrl] 与 [prefetch] 对称——非空时走 `HTTPS_PROXY`/`HTTP_PROXY` 环境变量传给子进程。
-     */
-    suspend fun validate(
-        workDir: String,
-        configFileName: String = "config.yaml",
-        proxyUrl: String? = null,
-        onProgress: ((String) -> Unit)? = null,
-    ): String?
-
-    /**
-     * 使用 mihomo -prefetch 预下载所有 HTTP provider 到 workDir。best-effort：
-     * 失败时返回 false，不抛异常——运行期 mihomo pullLoop 仍会兜底重试。
-     *
-     * @param proxyUrl 非空时作为 `HTTPS_PROXY`/`HTTP_PROXY` 环境变量传给 mihomo 子进程，
-     *                 让 provider 下载走本地 mihomo 代理；null 走直连。
-     */
-    suspend fun prefetch(
-        workDir: String,
-        configFileName: String = "config.yaml",
-        proxyUrl: String? = null,
-        onProgress: ((String) -> Unit)? = null,
-    ): Boolean
-
     /** mihomo 运行时工作目录（files/mihomo/），存放 override.user.json 等通用文件。 */
     fun getMihomoWorkDir(): String
 
@@ -60,9 +34,6 @@ interface ProfileFileManager {
 
     /** 写 mihomo workDir 下的文件（覆盖写入）。 */
     fun writeMihomoFile(relativePath: String, content: String)
-
-    fun ensureGeodataAvailable(workDir: String)
-    fun collectGeodata(workDir: String)
 
     // === imported 目录操作 ===
     fun getImportedDir(uuid: String): String

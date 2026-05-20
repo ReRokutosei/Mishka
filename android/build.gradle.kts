@@ -110,7 +110,49 @@ abstract class DownloadGeoFilesTask : DefaultTask() {
 }
 
 val downloadGeoFiles = tasks.register<DownloadGeoFilesTask>("downloadGeoFiles") {
+    description = "downloadGeoFiles"
     outputDir.set(layout.projectDirectory.dir("src/main/assets"))
+}
+
+val mihomoSubmoduleDir = rootProject.layout.projectDirectory.dir("mihomo")
+val mishkaCoreSourceDir = rootProject.layout.projectDirectory.dir("shared/src/androidMain/native/mishka_core")
+val mihomoBuildTags = listOf("cmfa", "mishka", "with_gvisor")
+val mihomoVersion = providers.gradleProperty("mihomo.version").orElse("dev").get()
+val mihomoVersionPath = "github.com/metacubex/mihomo/constant.Version"
+val ndkDirectoryProvider = androidComponents.sdkComponents.ndkDirectory
+
+val supportedAbis = listOf("arm64-v8a")
+
+// libmihomo.so 同时承担两个职责：
+//  1. 订阅导入 JNI 路径（libmishka_jni.so dlopen + dlsym mishkaFetchAndValid 等）
+//  2. mihomo runtime（薄 wrapper libmihomo_runner.so dlopen + dlsym mihomoEntry，fork+exec 启动）
+val buildMihomoTasks = supportedAbis.map { abi ->
+    val suffix = abi.replace("-", "_")
+    tasks.register<GoBuildTask>("buildMihomo_$suffix") {
+        group = "mihomo"
+        description = "Build unified mihomo + JNI c-shared library (libmihomo.so) for $abi"
+        goSourceDir.set(mishkaCoreSourceDir)
+        this.abi.set(abi)
+        versionName.set(mihomoVersion)
+        buildTags.set(mihomoBuildTags)
+        cgoEnabled.set(true)
+        buildMode.set(GoBuildTask.BuildMode.CShared)
+        ndkDirectory.set(ndkDirectoryProvider)
+        minSdk.set(ProjectConfig.Android.MIN_SDK)
+        moduleVersionPath.set(mihomoVersionPath)
+        outputFile.set(layout.projectDirectory.file("src/main/jniLibs/$abi/libmihomo.so"))
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(buildMihomoTasks)
+}
+
+// CMake 链接阶段引用 libmihomo.so + libmihomo.h
+tasks.configureEach {
+    if (name.startsWith("configureCMake") || name.startsWith("buildCMake")) {
+        dependsOn(buildMihomoTasks)
+    }
 }
 
 androidComponents {

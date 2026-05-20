@@ -9,7 +9,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.lsposed.hiddenapibypass.HiddenApiBypass
+import misc.VersionInfo
 import top.yukonga.mishka.data.api.MihomoConnectionManager
+import top.yukonga.mishka.data.bridge.MishkaCoreBridge
 import top.yukonga.mishka.platform.PlatformStorage
 import top.yukonga.mishka.platform.StorageKeys
 import top.yukonga.mishka.platform.initToastPlatform
@@ -35,6 +37,11 @@ class MishkaApplication : Application() {
         NotificationHelper.createChannels(this)
         connectionManager = MihomoConnectionManager(applicationScope)
         extractGeoFiles()
+        // 必须在 extractGeoFiles 之后；UA 用订阅服务白名单接受的字符串
+        MishkaCoreBridge.init(
+            homeDir = ProfileFileOps.getGeodataDir(this).absolutePath,
+            userAgent = "ClashMetaForAndroid/${VersionInfo.VERSION_NAME}",
+        )
         reclaimRootOwnedImported()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

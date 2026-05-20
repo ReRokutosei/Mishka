@@ -38,6 +38,7 @@ import mishka.shared.generated.resources.file_manager_saved
 import mishka.shared.generated.resources.file_manager_validating
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import top.yukonga.mishka.data.bridge.MishkaCoreBridge
 import top.yukonga.mishka.platform.ProfileFileManager
 import top.yukonga.mishka.platform.showToast
 import top.yukonga.mishka.ui.component.blur.BlurredBar
@@ -193,10 +194,7 @@ fun FileManagerEditorScreen(
     }
 }
 
-/**
- * 对 YAML 文件（config.yaml / .yml）做 mihomo -t 校验后落盘；其他文件直接写入。
- * 返回 null 表示成功，非空字符串为错误信息。
- */
+// 仅校验 YAML（config.yaml / .yml / .yaml），其他文件直接写盘。返回 null 表示通过。
 private suspend fun saveWithValidation(
     fileManager: ProfileFileManager,
     uuid: String,
@@ -211,8 +209,15 @@ private suspend fun saveWithValidation(
     val original = fileManager.readImportedFile(uuid, relativePath)
     fileManager.writeImportedFile(uuid, relativePath, newContent)
     val workDir = fileManager.getImportedDir(uuid)
-    fileManager.ensureGeodataAvailable(workDir)
-    val err = fileManager.validate(workDir, relativePath)
+    val err = runCatching {
+        MishkaCoreBridge.fetchAndValid(
+            workDir = workDir,
+            url = "",
+            force = false,
+            httpProxy = null,
+            onProgress = {},
+        )
+    }.exceptionOrNull()?.message
     if (err != null && original != null) {
         fileManager.writeImportedFile(uuid, relativePath, original)
     }

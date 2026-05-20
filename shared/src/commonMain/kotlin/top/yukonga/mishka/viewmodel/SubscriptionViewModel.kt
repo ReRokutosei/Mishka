@@ -25,7 +25,6 @@ import top.yukonga.mishka.data.repository.ConfigValidationException
 import top.yukonga.mishka.data.repository.ImportProgress
 import top.yukonga.mishka.data.repository.OverrideJsonStore
 import top.yukonga.mishka.data.repository.ProfileProcessor
-import top.yukonga.mishka.data.repository.SubscriptionFetcher
 import top.yukonga.mishka.data.repository.SubscriptionProxyResolver
 import top.yukonga.mishka.data.repository.SubscriptionRepository
 import top.yukonga.mishka.data.repository.enforceFieldValid
@@ -65,7 +64,6 @@ class SubscriptionViewModel(
     database: AppDatabase,
     storage: PlatformStorage,
     val fileManager: ProfileFileManager,
-    userAgent: String,
 ) : ViewModel() {
 
     private val repository = SubscriptionRepository(
@@ -78,11 +76,7 @@ class SubscriptionViewModel(
     )
     private val overrideStore = OverrideJsonStore(fileManager)
     private val proxyResolver = SubscriptionProxyResolver(storage, overrideStore)
-    private val fetcher = SubscriptionFetcher(
-        userAgent = userAgent,
-        proxyUrlProvider = { proxyResolver.resolve() },
-    )
-    private val processor = ProfileProcessor(repository, fileManager, fetcher, proxyResolver)
+    private val processor = ProfileProcessor(repository, fileManager, proxyResolver)
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
     val uiState: StateFlow<SubscriptionUiState> = _uiState.asStateFlow()

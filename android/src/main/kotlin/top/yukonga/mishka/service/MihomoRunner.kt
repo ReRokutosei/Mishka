@@ -30,7 +30,7 @@ class MihomoRunner(private val context: Context) {
     /**
      * 尝试重连已持久化的 mihomo 进程。三重校验任一失败均返回 false：
      *   1. PID 存活（kill -0）
-     *   2. cmdline 含 libmihomo.so（防 PID 复用撞其他 root 进程）
+     *   2. cmdline 含 libmihomo_runner.so（防 PID 复用撞其他 root 进程）
      *   3. stored secret 能通过 /configs 鉴权（防 secret 漂移导致 UI 假 Running）
      * 校验阶段**不**修改任何 field，全部通过后再原子赋值。
      * 订阅一致性由调用方在此之前校验（persisted subscriptionId vs 请求的 subscriptionId）。
@@ -46,7 +46,7 @@ class MihomoRunner(private val context: Context) {
             return false
         }
         val cmdline = RootHelper.readRootCmdline(pid)
-        if (!cmdline.contains("libmihomo.so")) {
+        if (!cmdline.contains("libmihomo_runner.so")) {
             Log.w(TAG, "Attach failed: wrong cmdline (pid=$pid, cmdline=${cmdline.take(64)})")
             return false
         }
@@ -309,7 +309,7 @@ class MihomoRunner(private val context: Context) {
 
     private fun getMihomoBinary(): File? {
         val nativeDir = context.applicationInfo.nativeLibraryDir
-        val binary = File(nativeDir, "libmihomo.so")
+        val binary = File(nativeDir, "libmihomo_runner.so")
         if (binary.exists()) return binary
         return null
     }
