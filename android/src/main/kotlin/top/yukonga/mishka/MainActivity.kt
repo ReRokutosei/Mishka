@@ -23,6 +23,7 @@ import io.github.g00fy2.quickie.config.ScannerConfig
 import kotlinx.coroutines.launch
 import top.yukonga.mishka.data.database.getAppDatabase
 import top.yukonga.mishka.data.repository.OverrideJsonStore
+import top.yukonga.mishka.data.repository.SubscriptionRepository
 import top.yukonga.mishka.platform.AppListProvider
 import top.yukonga.mishka.platform.BootStartManager
 import top.yukonga.mishka.platform.FilePicker
@@ -136,24 +137,36 @@ class MainActivity : ComponentActivity() {
             serviceController = serviceController,
         )
 
+        // 单例 SubscriptionRepository：HomeViewModel 直接订阅 activeSubscription Flow，
+        // SubscriptionViewModel 共享同一实例避免双流不一致（如订阅切换后主页流量栏不刷新）
+        val subscriptionRepository = SubscriptionRepository(
+            importedDao = database.importedDao(),
+            pendingDao = database.pendingDao(),
+            selectionDao = database.selectionDao(),
+            storage = storage,
+            fileManager = fileManager,
+            scope = lifecycleScope,
+        )
+
         subscriptionViewModel = SubscriptionViewModel(
-            database = database,
+            repository = subscriptionRepository,
             storage = storage,
             fileManager = fileManager,
         )
 
         proxyViewModel = ProxyViewModel(
             selectionDao = database.selectionDao(),
-            getActiveUuid = { subscriptionViewModel.getActiveSubscription()?.id },
+            getActiveUuid = { subscriptionRepository.getActive()?.id },
             storage = storage,
         )
 
         homeViewModel = HomeViewModel(
             serviceController = serviceController,
-            storage = storage,
             overrideStore = overrideStore,
             connectionManager = MishkaApplication.instance.connectionManager,
-            getActiveSubscriptionId = { subscriptionViewModel.getActiveSubscription()?.id },
+            getActiveSubscriptionId = { subscriptionRepository.getActive()?.id },
+            activeSubscription = subscriptionRepository.activeSubscription,
+            onLiveProviderInfo = subscriptionRepository::setLiveProviderInfo,
         )
 
         // 监听共享 connectionManager 的 repository：mihomo 重启时单点 close 旧 + new 新

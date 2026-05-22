@@ -2,9 +2,12 @@ package top.yukonga.mishka.data.repository
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -15,6 +18,7 @@ import top.yukonga.mishka.data.database.PendingEntity
 import top.yukonga.mishka.data.database.SelectionDao
 import top.yukonga.mishka.data.model.ProfileType
 import top.yukonga.mishka.data.model.Subscription
+import top.yukonga.mishka.data.model.SubscriptionInfo
 import top.yukonga.mishka.platform.PlatformStorage
 import top.yukonga.mishka.platform.ProfileFileManager
 import top.yukonga.mishka.platform.ProxyServiceBridge
@@ -52,10 +56,32 @@ class SubscriptionRepository(
     private val _subscriptions = MutableStateFlow<List<Subscription>>(emptyList())
     val subscriptions: StateFlow<List<Subscription>> = _subscriptions.asStateFlow()
 
+    /**
+     * mihomo runtime 聚合后的 active 订阅 live 流量。绑定 subscriptionId 避免用户切 active
+     * 不 restart 时把旧 active 的 provider 数据归属到新 active。HomeViewModel 在 loadConfig
+     * 拿到 providers 后推一次；mihomo 停止时清空。
+     */
+    private val _liveProvider = MutableStateFlow<LiveProviderSnapshot?>(null)
+
+    /** 当前活跃订阅（合并 mihomo runtime 聚合数据后），订阅页和主页流量栏统一从此读 */
+    val activeSubscription: StateFlow<Subscription?> = _subscriptions
+        .map { list -> list.firstOrNull { it.isActive } }
+        .stateIn(scope, SharingStarted.Eagerly, null)
+
+    /**
+     * 推送 mihomo runtime 聚合后的 live provider 流量。HomeViewModel 在 loadConfig 成功后
+     * 调用；service 停止 / repository 断开时传 null 清空。subscriptionId 必传以做归属校验。
+     */
+    fun setLiveProviderInfo(subscriptionId: String?, info: SubscriptionInfo?) {
+        _liveProvider.value = if (subscriptionId != null && info != null) {
+            LiveProviderSnapshot(subscriptionId, info)
+        } else null
+    }
+
     init {
         scope.launch {
-            combine(importedDao.getAllFlow(), _activeUuid) { entities, activeId ->
-                entities.map { resolveProfile(it, activeId) }
+            combine(importedDao.getAllFlow(), _activeUuid, _liveProvider) { entities, activeId, live ->
+                entities.map { resolveProfile(it, activeId, live) }
             }.collect { subs ->
                 _subscriptions.value = subs
             }
@@ -275,20 +301,28 @@ class SubscriptionRepository(
         ProxyServiceBridge.requestNotificationRefresh()
     }
 
-    // === 视图解析（Pending 优先于 Imported） ===
+    // === 视图解析（Pending 优先于 Imported；active 命中 live snapshot 时优先 live 流量） ===
 
-    private suspend fun resolveProfile(imported: ImportedEntity, activeId: String): Subscription {
+    private suspend fun resolveProfile(
+        imported: ImportedEntity,
+        activeId: String,
+        live: LiveProviderSnapshot?,
+    ): Subscription {
         val pending = pendingDao.queryByUUID(imported.uuid)
+        // 优先级：编辑中的 Pending > 运行中的 live provider 聚合 > DB ImportedEntity。
+        // 模板订阅（顶层 URL 无 subscription-userinfo header）的 DB 流量为 0，但 yaml 内
+        // proxy-provider 的真实流量在 mihomo runtime 里——本合并让订阅页和主页看到一致数据
+        val liveInfo = live?.takeIf { it.subscriptionId == imported.uuid }?.info
         return Subscription(
             id = imported.uuid,
             name = pending?.name ?: imported.name,
             type = pending?.type ?: imported.type,
             url = pending?.source ?: imported.source,
             interval = pending?.interval ?: imported.interval,
-            upload = pending?.upload ?: imported.upload,
-            download = pending?.download ?: imported.download,
-            total = pending?.total ?: imported.total,
-            expire = pending?.expire ?: imported.expire,
+            upload = pending?.upload ?: liveInfo?.Upload ?: imported.upload,
+            download = pending?.download ?: liveInfo?.Download ?: imported.download,
+            total = pending?.total ?: liveInfo?.Total ?: imported.total,
+            expire = pending?.expire ?: liveInfo?.Expire ?: imported.expire,
             updatedAt = fileManager?.getDirectoryLastModified(imported.uuid, pending = true)
                 ?: fileManager?.getDirectoryLastModified(imported.uuid, pending = false)
                 ?: imported.createdAt,
@@ -298,6 +332,12 @@ class SubscriptionRepository(
         )
     }
 }
+
+/** active 订阅的 mihomo runtime 聚合流量快照，绑定 subscriptionId 防止切 active 时错误归属。 */
+data class LiveProviderSnapshot(
+    val subscriptionId: String,
+    val info: SubscriptionInfo,
+)
 
 /**
  * 订阅导入流程的类型化错误。所有错误都带有清晰的中文 message，避免 `e.message == null` 漏到 UI。

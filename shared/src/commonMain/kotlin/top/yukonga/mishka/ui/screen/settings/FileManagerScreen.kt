@@ -82,55 +82,55 @@ fun FileManagerScreen(
         },
     ) { innerPadding ->
         Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
-        if (importedSubs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(Res.string.file_manager_empty),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scrollEndHaptic()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
-                ),
-            ) {
-                item(key = "top_spacer", contentType = "spacer") {
-                    Spacer(Modifier.height(12.dp))
+            if (importedSubs.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.file_manager_empty),
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
                 }
-                items(importedSubs, key = { it.id }) { sub ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        ArrowPreference(
-                            title = sub.name.ifBlank { sub.id.take(8) },
-                            summary = sub.id,
-                            onClick = {
-                                val files = subscriptionViewModel?.fileManager?.listImportedFiles(sub.id).orEmpty()
-                                val firstFile = files.firstOrNull { it == "config.yaml" } ?: files.firstOrNull()
-                                if (firstFile != null) {
-                                    onOpenFile(sub.id, firstFile)
-                                }
-                            },
-                        )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .scrollEndHaptic()
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding(),
+                    ),
+                ) {
+                    item(key = "top_spacer", contentType = "spacer") {
+                        Spacer(Modifier.height(12.dp))
                     }
+                    items(importedSubs, key = { it.id }) { sub ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .padding(bottom = 12.dp),
+                        ) {
+                            ArrowPreference(
+                                title = sub.name.ifBlank { sub.id.take(8) },
+                                summary = sub.id,
+                                onClick = {
+                                    val files = subscriptionViewModel?.fileManager?.listImportedFiles(sub.id).orEmpty()
+                                    val firstFile = files.firstOrNull { it == "config.yaml" } ?: files.firstOrNull()
+                                    if (firstFile != null) {
+                                        onOpenFile(sub.id, firstFile)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    item { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }
                 }
-                item { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }
             }
-        }
         }
     }
 }

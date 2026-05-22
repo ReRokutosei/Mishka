@@ -160,52 +160,52 @@ fun ConnectionScreen(
                         color = barColor,
                         scrollBehavior = scrollBehavior,
                         navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            val layoutDirection = LocalLayoutDirection.current
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = stringResource(Res.string.common_back),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                                modifier = Modifier.graphicsLayer {
-                                    scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
-                                },
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showCloseAllDialog = true }) {
-                            Icon(
-                                imageVector = MiuixIcons.Delete,
-                                contentDescription = stringResource(Res.string.connection_close_all),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
-                    },
-                    bottomContent = {
-                        Box(
-                            modifier = Modifier
-                                .graphicsLayer { alpha = if (searchStatus.isCollapsed()) 1f else 0f }
-                                .onGloballyPositioned { coordinates ->
-                                    with(density) {
-                                        val newOffsetY = coordinates.positionInWindow().y.toDp()
-                                        if (searchStatus.offsetY != newOffsetY) {
-                                            searchStatus = searchStatus.copy(offsetY = newOffsetY)
-                                        }
-                                    }
-                                }
-                                .then(
-                                    if (searchStatus.isCollapsed()) {
-                                        Modifier.pointerInput(Unit) {
-                                            detectTapGestures {
-                                                searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                            IconButton(onClick = onBack) {
+                                val layoutDirection = LocalLayoutDirection.current
+                                Icon(
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = stringResource(Res.string.common_back),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    modifier = Modifier.graphicsLayer {
+                                        scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+                                    },
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { showCloseAllDialog = true }) {
+                                Icon(
+                                    imageVector = MiuixIcons.Delete,
+                                    contentDescription = stringResource(Res.string.connection_close_all),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
+                        },
+                        bottomContent = {
+                            Box(
+                                modifier = Modifier
+                                    .graphicsLayer { alpha = if (searchStatus.isCollapsed()) 1f else 0f }
+                                    .onGloballyPositioned { coordinates ->
+                                        with(density) {
+                                            val newOffsetY = coordinates.positionInWindow().y.toDp()
+                                            if (searchStatus.offsetY != newOffsetY) {
+                                                searchStatus = searchStatus.copy(offsetY = newOffsetY)
                                             }
                                         }
-                                    } else Modifier,
-                                ),
-                        ) {
-                            SearchBarFake(searchStatus.label, dynamicTopPadding)
-                        }
-                    },
+                                    }
+                                    .then(
+                                        if (searchStatus.isCollapsed()) {
+                                            Modifier.pointerInput(Unit) {
+                                                detectTapGestures {
+                                                    searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                                                }
+                                            }
+                                        } else Modifier,
+                                    ),
+                            ) {
+                                SearchBarFake(searchStatus.label, dynamicTopPadding)
+                            }
+                        },
                     )
                 }
             }

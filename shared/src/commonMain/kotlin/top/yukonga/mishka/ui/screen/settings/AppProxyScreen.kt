@@ -166,149 +166,149 @@ fun AppProxyScreen(
                         color = barColor,
                         scrollBehavior = scrollBehavior,
                         navigationIcon = {
-                        IconButton(onClick = {
-                            if (viewModel.applyIfChanged()) {
-                                showToast(appliedMsg)
-                            }
-                            onBack()
-                        }) {
-                            val layoutDirection = LocalLayoutDirection.current
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = stringResource(Res.string.common_back),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                                modifier = Modifier.graphicsLayer {
-                                    scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
-                                },
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = { showPopup.value = true },
-                            holdDownState = showPopup.value,
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.More,
-                                contentDescription = stringResource(Res.string.common_more),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
-
-                        // 顶栏下拉菜单
-                        WindowListPopup(
-                            show = showPopup.value,
-                            popupPositionProvider = MenuPositionProvider,
-                            alignment = PopupPositionProvider.Align.TopEnd,
-                            onDismissRequest = { showPopup.value = false },
-                        ) {
-                            ListPopupColumn {
-                                DropdownImpl(
-                                    text = stringResource(Res.string.app_proxy_select_all),
-                                    optionSize = 6,
-                                    isSelected = false,
-                                    index = 0,
-                                    onSelectedIndexChange = {
-                                        viewModel.selectAll()
-                                        showPopup.value = false
-                                    },
-                                )
-                                DropdownImpl(
-                                    text = stringResource(Res.string.app_proxy_deselect_all),
-                                    optionSize = 6,
-                                    isSelected = false,
-                                    index = 1,
-                                    onSelectedIndexChange = {
-                                        viewModel.deselectAll()
-                                        showPopup.value = false
-                                    },
-                                )
-                                DropdownImpl(
-                                    text = stringResource(Res.string.app_proxy_invert),
-                                    optionSize = 6,
-                                    isSelected = false,
-                                    index = 2,
-                                    onSelectedIndexChange = {
-                                        viewModel.invertSelection()
-                                        showPopup.value = false
-                                    },
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier
-                                        .padding(horizontal = 20.dp)
-                                        .fillMaxWidth(),
-                                )
-                                DropdownImpl(
-                                    text = if (uiState.showSystemApps) stringResource(Res.string.app_proxy_hide_system) else stringResource(
-                                        Res.string.app_proxy_show_system
-                                    ),
-                                    optionSize = 6,
-                                    isSelected = uiState.showSystemApps,
-                                    index = 3,
-                                    onSelectedIndexChange = {
-                                        viewModel.setShowSystemApps(!uiState.showSystemApps)
-                                        showPopup.value = false
-                                    },
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier
-                                        .padding(horizontal = 20.dp)
-                                        .fillMaxWidth(),
-                                )
-                                DropdownImpl(
-                                    text = stringResource(Res.string.app_proxy_import),
-                                    optionSize = 6,
-                                    isSelected = false,
-                                    index = 4,
-                                    onSelectedIndexChange = {
-                                        val text = clipboardManager.getText()?.text
-                                        if (!text.isNullOrBlank()) {
-                                            viewModel.importPackages(text)
-                                        }
-                                        showPopup.value = false
-                                    },
-                                )
-                                DropdownImpl(
-                                    text = stringResource(Res.string.app_proxy_export),
-                                    optionSize = 6,
-                                    isSelected = false,
-                                    index = 5,
-                                    onSelectedIndexChange = {
-                                        val exported = viewModel.exportPackages()
-                                        if (exported.isNotEmpty()) {
-                                            clipboardManager.setText(AnnotatedString(exported))
-                                        }
-                                        showPopup.value = false
-                                    },
-                                )
-                            }
-                        }
-                    },
-                    bottomContent = {
-                        Box(
-                            modifier = Modifier
-                                .alpha(if (searchStatus.isCollapsed()) 1f else 0f)
-                                .onGloballyPositioned { coordinates ->
-                                    with(density) {
-                                        val newOffsetY = coordinates.positionInWindow().y.toDp()
-                                        if (searchStatus.offsetY != newOffsetY) {
-                                            searchStatus = searchStatus.copy(offsetY = newOffsetY)
-                                        }
-                                    }
+                            IconButton(onClick = {
+                                if (viewModel.applyIfChanged()) {
+                                    showToast(appliedMsg)
                                 }
-                                .then(
-                                    if (searchStatus.isCollapsed()) {
-                                        Modifier.pointerInput(Unit) {
-                                            detectTapGestures {
-                                                searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                                onBack()
+                            }) {
+                                val layoutDirection = LocalLayoutDirection.current
+                                Icon(
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = stringResource(Res.string.common_back),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    modifier = Modifier.graphicsLayer {
+                                        scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+                                    },
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { showPopup.value = true },
+                                holdDownState = showPopup.value,
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.More,
+                                    contentDescription = stringResource(Res.string.common_more),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
+
+                            // 顶栏下拉菜单
+                            WindowListPopup(
+                                show = showPopup.value,
+                                popupPositionProvider = MenuPositionProvider,
+                                alignment = PopupPositionProvider.Align.TopEnd,
+                                onDismissRequest = { showPopup.value = false },
+                            ) {
+                                ListPopupColumn {
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.app_proxy_select_all),
+                                        optionSize = 6,
+                                        isSelected = false,
+                                        index = 0,
+                                        onSelectedIndexChange = {
+                                            viewModel.selectAll()
+                                            showPopup.value = false
+                                        },
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.app_proxy_deselect_all),
+                                        optionSize = 6,
+                                        isSelected = false,
+                                        index = 1,
+                                        onSelectedIndexChange = {
+                                            viewModel.deselectAll()
+                                            showPopup.value = false
+                                        },
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.app_proxy_invert),
+                                        optionSize = 6,
+                                        isSelected = false,
+                                        index = 2,
+                                        onSelectedIndexChange = {
+                                            viewModel.invertSelection()
+                                            showPopup.value = false
+                                        },
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .padding(horizontal = 20.dp)
+                                            .fillMaxWidth(),
+                                    )
+                                    DropdownImpl(
+                                        text = if (uiState.showSystemApps) stringResource(Res.string.app_proxy_hide_system) else stringResource(
+                                            Res.string.app_proxy_show_system
+                                        ),
+                                        optionSize = 6,
+                                        isSelected = uiState.showSystemApps,
+                                        index = 3,
+                                        onSelectedIndexChange = {
+                                            viewModel.setShowSystemApps(!uiState.showSystemApps)
+                                            showPopup.value = false
+                                        },
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .padding(horizontal = 20.dp)
+                                            .fillMaxWidth(),
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.app_proxy_import),
+                                        optionSize = 6,
+                                        isSelected = false,
+                                        index = 4,
+                                        onSelectedIndexChange = {
+                                            val text = clipboardManager.getText()?.text
+                                            if (!text.isNullOrBlank()) {
+                                                viewModel.importPackages(text)
+                                            }
+                                            showPopup.value = false
+                                        },
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(Res.string.app_proxy_export),
+                                        optionSize = 6,
+                                        isSelected = false,
+                                        index = 5,
+                                        onSelectedIndexChange = {
+                                            val exported = viewModel.exportPackages()
+                                            if (exported.isNotEmpty()) {
+                                                clipboardManager.setText(AnnotatedString(exported))
+                                            }
+                                            showPopup.value = false
+                                        },
+                                    )
+                                }
+                            }
+                        },
+                        bottomContent = {
+                            Box(
+                                modifier = Modifier
+                                    .alpha(if (searchStatus.isCollapsed()) 1f else 0f)
+                                    .onGloballyPositioned { coordinates ->
+                                        with(density) {
+                                            val newOffsetY = coordinates.positionInWindow().y.toDp()
+                                            if (searchStatus.offsetY != newOffsetY) {
+                                                searchStatus = searchStatus.copy(offsetY = newOffsetY)
                                             }
                                         }
-                                    } else Modifier,
-                                ),
-                        ) {
-                            SearchBarFake(searchStatus.label, dynamicTopPadding)
-                        }
-                    },
+                                    }
+                                    .then(
+                                        if (searchStatus.isCollapsed()) {
+                                            Modifier.pointerInput(Unit) {
+                                                detectTapGestures {
+                                                    searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                                                }
+                                            }
+                                        } else Modifier,
+                                    ),
+                            ) {
+                                SearchBarFake(searchStatus.label, dynamicTopPadding)
+                            }
+                        },
                     )
                 }
             }

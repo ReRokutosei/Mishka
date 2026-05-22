@@ -12,17 +12,19 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import top.yukonga.mishka.data.api.MihomoConnectionManager
 import top.yukonga.mishka.data.model.MihomoConfig
+import top.yukonga.mishka.data.model.ProvidersResponse
+import top.yukonga.mishka.data.model.Subscription
 import top.yukonga.mishka.data.model.SubscriptionInfo
 import top.yukonga.mishka.data.model.TunOverride
 import top.yukonga.mishka.data.repository.MihomoRepository
 import top.yukonga.mishka.data.repository.OverrideJsonStore
-import top.yukonga.mishka.platform.PlatformStorage
 import top.yukonga.mishka.platform.PlatformSystemInfo
 import top.yukonga.mishka.platform.ProxyServiceController
 import top.yukonga.mishka.platform.ProxyState
 import top.yukonga.mishka.platform.TunMode
 import top.yukonga.mishka.util.FormatUtils
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /** 低频状态：mihomo 运行状态、配置、代理组、延迟、错误等；改变频率与生命周期事件相当 */
 @Immutable
@@ -71,10 +73,11 @@ data class SystemInfoSnapshot(
 
 class HomeViewModel(
     private val serviceController: ProxyServiceController,
-    private val storage: PlatformStorage,
     private val overrideStore: OverrideJsonStore,
     private val connectionManager: MihomoConnectionManager,
     private val getActiveSubscriptionId: () -> String? = { null },
+    private val activeSubscription: StateFlow<Subscription?> = MutableStateFlow(null).asStateFlow(),
+    private val onLiveProviderInfo: (subscriptionId: String?, info: SubscriptionInfo?) -> Unit = { _, _ -> },
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -109,11 +112,21 @@ class HomeViewModel(
             serviceController.status.collect { status ->
                 when (status.state) {
                     ProxyState.Starting -> {
-                        _uiState.value = _uiState.value.copy(isStarting = true, isStopping = false, tunMode = status.tunMode)
+                        _uiState.value = _uiState.value.copy(
+                            isStarting = true,
+                            isStopping = false,
+                            tunMode = status.tunMode,
+                            subscription = activeSubscriptionInfo(),
+                        )
                     }
 
                     ProxyState.Running -> {
-                        _uiState.value = _uiState.value.copy(isStarting = false, isRunning = true, tunMode = status.tunMode)
+                        _uiState.value = _uiState.value.copy(
+                            isStarting = false,
+                            isRunning = true,
+                            tunMode = status.tunMode,
+                            subscription = activeSubscriptionInfo(),
+                        )
                         startTime = if (status.startTime > 0) status.startTime else Clock.System.now().toEpochMilliseconds()
                         mihomoPid = status.mihomoPid
                     }
@@ -146,9 +159,21 @@ class HomeViewModel(
                 }
             }
         }
+        // activeSubscription 变化的两个驱动源：① 用户切 active 订阅 ② Repository merge 进
+        // mihomo live provider 后 emit 新值。两种情况主页流量栏都需要即时刷新。
+        viewModelScope.launch {
+            activeSubscription.collect {
+                if (_uiState.value.isRunning || _uiState.value.isStarting) {
+                    _uiState.value = _uiState.value.copy(subscription = activeSubscriptionInfo())
+                }
+            }
+        }
     }
 
     private fun connectToMihomo() {
+        // 立即用 DB 缓存填充流量栏；loadConfig 拿到 mihomo providers 后会通过 Repository
+        // emit 触发 activeSubscription collect 自动覆盖为聚合后的实时数据
+        _uiState.value = _uiState.value.copy(subscription = activeSubscriptionInfo())
         startTrafficCollection()
         startMemoryCollection()
         startSystemInfoCollection()
@@ -173,10 +198,45 @@ class HomeViewModel(
         repository?.getVersion()?.onSuccess { version ->
             _uiState.value = _uiState.value.copy(version = version.version)
         }
+        // 把聚合后的 provider info 推回 Repository，由 Repository 合并到 active Subscription
+        // 视图模型。订阅页和主页都从 SubscriptionRepository.subscriptions 读，自动一致。
         repository?.getProviders()?.onSuccess { providers ->
-            val sub = providers.providers.values.firstOrNull()?.subscriptionInfo
-            _uiState.value = _uiState.value.copy(subscription = sub)
+            onLiveProviderInfo(getActiveSubscriptionId(), aggregateProviderInfo(providers))
         }
+    }
+
+    /**
+     * 多订阅源（yaml 含多个 proxy-provider）时聚合所有有 subscription-userinfo header
+     * 的 provider：流量求和、过期时间取最近。单源场景退化为单值；全部无 userinfo 返回 null
+     * 让 Repository 走 DB 回退（File 类型订阅或服务端不返回 header 时）。
+     */
+    private fun aggregateProviderInfo(providers: ProvidersResponse): SubscriptionInfo? {
+        val valid = providers.providers.values.mapNotNull { info ->
+            info.subscriptionInfo?.takeIf { it.Total > 0 }
+        }
+        if (valid.isEmpty()) return null
+        if (valid.size == 1) return valid.first()
+        return SubscriptionInfo(
+            Upload = valid.sumOf { it.Upload },
+            Download = valid.sumOf { it.Download },
+            Total = valid.sumOf { it.Total },
+            Expire = valid.filter { it.Expire > 0 }.minOfOrNull { it.Expire } ?: 0,
+        )
+    }
+
+    /**
+     * 当前活跃订阅的视图流量信息。Repository 已合并 mihomo runtime live data 到 active
+     * Subscription，本函数只做 model 转换；total<=0 返回 null 让 UI 显示 "--"。
+     */
+    private fun activeSubscriptionInfo(): SubscriptionInfo? {
+        val sub = activeSubscription.value ?: return null
+        if (sub.total <= 0) return null
+        return SubscriptionInfo(
+            Upload = sub.upload,
+            Download = sub.download,
+            Total = sub.total,
+            Expire = sub.expire,
+        )
     }
 
     private fun startTrafficCollection() {
@@ -216,7 +276,7 @@ class HomeViewModel(
             while (true) {
                 val elapsed = (Clock.System.now().toEpochMilliseconds() - startTime) / 1000
                 _uptimeState.value = elapsed
-                delay(1000)
+                delay(1000.milliseconds)
             }
         }
     }
@@ -232,7 +292,7 @@ class HomeViewModel(
                     interfaceName = networkInfo.interfaceName,
                     cpuUsage = if (cpu >= 0) "${cpu.toInt()}%" else "--%",
                 )
-                delay(2000)
+                delay(2000.milliseconds)
             }
         }
     }
@@ -358,6 +418,8 @@ class HomeViewModel(
         memoryJob?.cancel()
         systemInfoJob?.cancel()
         uptimeJob?.cancel()
+        // mihomo 断开时清掉 live provider，订阅页立即回退到 DB 数据
+        onLiveProviderInfo(null, null)
         mihomoPid = -1
     }
 

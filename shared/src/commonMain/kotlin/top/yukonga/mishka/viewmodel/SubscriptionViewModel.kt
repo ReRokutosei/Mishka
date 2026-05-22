@@ -18,7 +18,6 @@ import mishka.shared.generated.resources.error_validation_failed
 import mishka.shared.generated.resources.subscription_file_only_no_update
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
-import top.yukonga.mishka.data.database.AppDatabase
 import top.yukonga.mishka.data.model.ProfileType
 import top.yukonga.mishka.data.model.Subscription
 import top.yukonga.mishka.data.repository.ConfigValidationException
@@ -61,19 +60,11 @@ data class UpdateAllProgress(
 )
 
 class SubscriptionViewModel(
-    database: AppDatabase,
+    private val repository: SubscriptionRepository,
     storage: PlatformStorage,
     val fileManager: ProfileFileManager,
 ) : ViewModel() {
 
-    private val repository = SubscriptionRepository(
-        importedDao = database.importedDao(),
-        pendingDao = database.pendingDao(),
-        selectionDao = database.selectionDao(),
-        storage = storage,
-        fileManager = fileManager,
-        scope = viewModelScope,
-    )
     private val overrideStore = OverrideJsonStore(fileManager)
     private val proxyResolver = SubscriptionProxyResolver(storage, overrideStore)
     private val processor = ProfileProcessor(repository, fileManager, proxyResolver)
@@ -229,8 +220,6 @@ class SubscriptionViewModel(
             }
         }
     }
-
-    fun getActiveSubscription(): Subscription? = repository.getActive()
 
     /**
      * 编辑订阅属性（名称、URL、更新间隔）。URL 类型走 ProfileProcessor 重新校验，

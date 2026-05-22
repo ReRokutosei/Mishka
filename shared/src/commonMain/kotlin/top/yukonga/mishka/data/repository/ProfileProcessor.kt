@@ -139,6 +139,7 @@ class ProfileProcessor(
             }
             ImportProgress(step, current = p.progress, total = p.max)
         }
+
         "Verifying" -> ImportProgress(getString(Res.string.subscription_validating))
         else -> ImportProgress(p.action)
     }
