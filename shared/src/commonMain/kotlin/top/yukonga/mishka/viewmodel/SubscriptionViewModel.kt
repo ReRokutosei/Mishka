@@ -170,9 +170,7 @@ class SubscriptionViewModel(
     }
 
     fun setActive(id: String) {
-        viewModelScope.launch {
-            repository.setActive(id)
-        }
+        repository.setActive(id)
     }
 
     /**

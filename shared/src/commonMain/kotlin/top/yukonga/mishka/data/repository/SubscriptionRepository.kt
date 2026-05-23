@@ -48,7 +48,7 @@ class SubscriptionRepository(
     private val selectionDao: SelectionDao,
     private val storage: PlatformStorage,
     private val fileManager: ProfileFileManager? = null,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
 
     private val profileLock = Mutex()
@@ -292,15 +292,17 @@ class SubscriptionRepository(
 
     // === 活跃配置管理 ===
 
-    suspend fun setActive(id: String) {
+    // uuid 同步写：调用方紧接着的 restartProxy 需要立刻读到新值，不能延后到下一个调度 tick
+    fun setActive(id: String) {
         _activeUuid.value = id
         storage.putString(StorageKeys.ACTIVE_PROFILE_UUID, id)
-        val name = _subscriptions.value.find { it.id == id }?.name
-            ?: importedDao.queryByUUID(id)?.name
-            ?: ""
-        storage.putString(StorageKeys.ACTIVE_PROFILE_NAME, name)
-        // 通知正在运行的 Service 刷新通知中的订阅名称
-        ProxyServiceBridge.requestNotificationRefresh()
+        scope.launch {
+            val name = _subscriptions.value.find { it.id == id }?.name
+                ?: importedDao.queryByUUID(id)?.name
+                ?: ""
+            storage.putString(StorageKeys.ACTIVE_PROFILE_NAME, name)
+            ProxyServiceBridge.requestNotificationRefresh()
+        }
     }
 
     fun getActive(): Subscription? {
