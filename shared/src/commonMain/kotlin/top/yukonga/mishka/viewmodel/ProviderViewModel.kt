@@ -2,6 +2,7 @@ package top.yukonga.mishka.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,8 +45,12 @@ class ProviderViewModel : ViewModel() {
     val uiState: StateFlow<ProviderUiState> = _uiState.asStateFlow()
 
     private var repository: MihomoRepository? = null
+    // mihomo 重启切 client 时取消旧的 loadProviders 协程，防止旧 client 的 HTTP 响应已读完
+    // 但 UI 写回晚于新 client 的写入，把刚切走的旧订阅 provider 列表覆盖回来
+    private var loadJob: Job? = null
 
     fun setRepository(repo: MihomoRepository?) {
+        loadJob?.cancel()
         repository = repo
         if (repo != null) {
             loadProviders()
@@ -58,7 +63,8 @@ class ProviderViewModel : ViewModel() {
         val repo = repository ?: return
         _uiState.update { it.copy(isLoading = true, error = "") }
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val items = mutableListOf<ProviderItemUi>()
 
             repo.getProviders().onSuccess { response ->
@@ -93,6 +99,8 @@ class ProviderViewModel : ViewModel() {
                     }
             }
 
+            // repo 已被切换则丢弃 in-flight 响应，避免覆盖新订阅的 provider 列表
+            if (repository !== repo) return@launch
             // 代理 provider 排在规则 provider 前面；各自组内按 name 升序
             _uiState.update {
                 it.copy(
@@ -111,6 +119,7 @@ class ProviderViewModel : ViewModel() {
 
         viewModelScope.launch {
             val result = if (isRuleProvider) repo.updateRuleProvider(name) else repo.updateProvider(name)
+            if (repository !== repo) return@launch
             _uiState.update {
                 it.copy(
                     refresh = null,
@@ -139,6 +148,7 @@ class ProviderViewModel : ViewModel() {
                     res.exceptionOrNull()?.let { e ->
                         synchronized(failures) { failures += "${provider.name}: ${e.describe()}" }
                     }
+                    if (repository !== repo) return@async
                     _uiState.update { state ->
                         val cur = state.refresh ?: return@update state
                         state.copy(refresh = cur.copy(completed = cur.completed + 1))
@@ -146,6 +156,7 @@ class ProviderViewModel : ViewModel() {
                 }
             }.awaitAll()
 
+            if (repository !== repo) return@launch
             _uiState.update {
                 it.copy(
                     refresh = null,

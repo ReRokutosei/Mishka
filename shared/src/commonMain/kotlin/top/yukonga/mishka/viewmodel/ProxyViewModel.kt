@@ -12,6 +12,7 @@ import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.collections.immutable.toPersistentSet
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +56,9 @@ class ProxyViewModel(
     val sortOption: StateFlow<Int> = _sortOption.asStateFlow()
 
     private var repository: MihomoRepository? = null
+    // mihomo 重启切 client 时取消旧的 loadProxies 协程，防止其 HTTP 响应已读完但 UI 写回
+    // 晚于新 client 的写入，把刚切走的旧订阅代理组覆盖回来
+    private var loadJob: Job? = null
 
     fun updateSortOption(option: Int) {
         _sortOption.value = option
@@ -65,6 +69,7 @@ class ProxyViewModel(
         storage?.getString(StorageKeys.PROXY_NODE_SORT_OPTION, "0")?.toIntOrNull() ?: 0
 
     fun setRepository(repo: MihomoRepository?) {
+        loadJob?.cancel()
         repository = repo
         if (repo != null) {
             loadProxies()
@@ -77,9 +82,13 @@ class ProxyViewModel(
         val repo = repository ?: return
         _uiState.value = _uiState.value.copy(error = "")
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val groupsResult = repo.getGroups()
             val proxiesResult = repo.getProxies()
+            // 协程被 cancel 后 HTTP 响应仍可能已读完，二次校验 repo identity 防止把旧 client
+            // 的结果写到当前 repo 已切换后的 UI
+            if (repository !== repo) return@launch
 
             groupsResult.onSuccess { groupsResponse ->
                 val allProxies = proxiesResult.getOrNull()?.proxies ?: emptyMap()
@@ -141,6 +150,7 @@ class ProxyViewModel(
         val repo = repository ?: return
         viewModelScope.launch {
             repo.selectProxy(group, proxy).onSuccess {
+                if (repository !== repo) return@onSuccess
                 _uiState.value = _uiState.value.copy(
                     groups = _uiState.value.groups
                         .map { if (it.name == group) it.copy(now = proxy) else it }
@@ -162,6 +172,7 @@ class ProxyViewModel(
         viewModelScope.launch {
             // mihomo /group/{name}/delay 测全部节点延迟，结果会自然写入 history.delay
             repo.testGroupDelay(group)
+            if (repository !== repo) return@launch
             loadProxies()
             _uiState.value = _uiState.value.copy(
                 testingGroups = (_uiState.value.testingGroups - group).toPersistentSet(),
