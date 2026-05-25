@@ -110,6 +110,8 @@
     <string name="subscription_used_traffic">已用 %1$s / %2$s</string>
     <string name="subscription_no_traffic">未获取到流量信息</string>
     <string name="subscription_updated_at">更新于 %1$s</string>
+    <string name="subscription_delete_title">删除订阅</string>
+    <string name="subscription_delete_summary">确定要删除「%1$s」吗？将会移除配置文件以及节点选择记录。</string>
 
     <!-- Subscription Create/Edit -->
     <string name="subscription_create">创建配置</string>

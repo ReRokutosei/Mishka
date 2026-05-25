@@ -110,6 +110,8 @@
     <string name="subscription_used_traffic">Used %1$s / %2$s</string>
     <string name="subscription_no_traffic">No traffic info</string>
     <string name="subscription_updated_at">Updated at %1$s</string>
+    <string name="subscription_delete_title">Delete subscription</string>
+    <string name="subscription_delete_summary">Delete \"%1$s\"? This will remove the config files and selection history.</string>
 
     <!-- Subscription Create/Edit -->
     <string name="subscription_create">Create Config</string>

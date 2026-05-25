@@ -18,6 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,12 +37,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mishka.shared.generated.resources.Res
 import mishka.shared.generated.resources.common_back
+import mishka.shared.generated.resources.common_cancel
+import mishka.shared.generated.resources.common_confirm
 import mishka.shared.generated.resources.common_delete
 import mishka.shared.generated.resources.common_edit
 import mishka.shared.generated.resources.common_processing
 import mishka.shared.generated.resources.common_update
 import mishka.shared.generated.resources.subscription_add
 import mishka.shared.generated.resources.subscription_config
+import mishka.shared.generated.resources.subscription_delete_summary
+import mishka.shared.generated.resources.subscription_delete_title
 import mishka.shared.generated.resources.subscription_import_config
 import mishka.shared.generated.resources.subscription_in_use
 import mishka.shared.generated.resources.subscription_no_config
@@ -61,6 +68,7 @@ import top.yukonga.mishka.util.FormatUtils
 import top.yukonga.mishka.util.formatEpochMillisAsLocal
 import top.yukonga.mishka.viewmodel.ProfileOperation
 import top.yukonga.mishka.viewmodel.SubscriptionViewModel
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
@@ -68,6 +76,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -80,6 +89,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 /**
  * 订阅列表页面
@@ -263,6 +273,9 @@ private fun SubscriptionItem(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val displayName = subscription.name.ifBlank { stringResource(Res.string.subscription_config) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -381,7 +394,7 @@ private fun SubscriptionItem(
             }
             Spacer(Modifier.width(8.dp))
             IconButton(
-                onClick = onDelete,
+                onClick = { showDeleteDialog = true },
                 minHeight = 35.dp,
                 minWidth = 35.dp,
                 backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
@@ -393,6 +406,33 @@ private fun SubscriptionItem(
                     tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
+        }
+    }
+
+    WindowDialog(
+        show = showDeleteDialog,
+        title = stringResource(Res.string.subscription_delete_title),
+        summary = stringResource(Res.string.subscription_delete_summary, displayName),
+        onDismissRequest = { showDeleteDialog = false },
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(
+                text = stringResource(Res.string.common_cancel),
+                modifier = Modifier.weight(1f),
+                onClick = { showDeleteDialog = false },
+            )
+            TextButton(
+                text = stringResource(Res.string.common_confirm),
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+                onClick = {
+                    showDeleteDialog = false
+                    onDelete()
+                },
+            )
         }
     }
 }
