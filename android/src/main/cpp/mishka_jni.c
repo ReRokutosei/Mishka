@@ -71,3 +71,18 @@ Java_top_yukonga_mishka_data_bridge_MishkaCoreBridge_nativeQueryProgress(
     char *progress = mishkaQueryProgress((int) jToken);
     return go_cstr_to_jstring(env, progress);
 }
+
+JNIEXPORT void JNICALL
+Java_top_yukonga_mishka_data_bridge_MishkaCoreBridge_nativeSetAgeSecretKey(
+        JNIEnv *env, jclass clazz, jstring jKey) {
+    char *key = jstring_to_cstr(env, jKey);
+    mishkaSetAgeSecretKey(key ? key : "");
+    free(key);
+}
+
+JNIEXPORT jstring JNICALL
+Java_top_yukonga_mishka_data_bridge_MishkaCoreBridge_nativeGenAgeKeyPair(
+        JNIEnv *env, jclass clazz) {
+    char *result = mishkaGenAgeKeyPair();
+    return go_cstr_to_jstring(env, result);
+}

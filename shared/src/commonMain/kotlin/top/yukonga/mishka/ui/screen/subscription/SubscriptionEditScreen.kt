@@ -22,6 +22,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mishka.shared.generated.resources.Res
 import mishka.shared.generated.resources.common_back
 import mishka.shared.generated.resources.common_save
+import mishka.shared.generated.resources.subscription_age_secret_key
+import mishka.shared.generated.resources.subscription_age_secret_key_placeholder
 import mishka.shared.generated.resources.subscription_auto_update
 import mishka.shared.generated.resources.subscription_auto_update_placeholder
 import mishka.shared.generated.resources.subscription_config_name
@@ -69,6 +71,7 @@ fun SubscriptionEditScreen(
     var name by rememberSaveable(uuid) { mutableStateOf(subscription?.name ?: "") }
     var url by rememberSaveable(uuid) { mutableStateOf(subscription?.url ?: "") }
     var userAgent by rememberSaveable(uuid) { mutableStateOf(subscription?.userAgent ?: "") }
+    var ageSecretKey by rememberSaveable(uuid) { mutableStateOf(subscription?.ageSecretKey ?: "") }
     var intervalMinutes by rememberSaveable(uuid) {
         mutableStateOf(
             if ((subscription?.interval ?: 0) > 0) ((subscription?.interval ?: 0) / 60000).toString() else ""
@@ -84,6 +87,7 @@ fun SubscriptionEditScreen(
     val hasChanges = name != subscription.name ||
             url != subscription.url ||
             userAgent.trim() != subscription.userAgent ||
+            ageSecretKey.trim() != subscription.ageSecretKey ||
             intervalMinutes != (if (subscription.interval > 0) (subscription.interval / 60000).toString() else "")
 
     val backdrop = rememberBlurBackdrop()
@@ -157,6 +161,17 @@ fun SubscriptionEditScreen(
                             .padding(horizontal = 12.dp)
                             .padding(bottom = 6.dp),
                     )
+                    SmallTitle(text = stringResource(Res.string.subscription_age_secret_key))
+                    TextField(
+                        value = ageSecretKey,
+                        onValueChange = { ageSecretKey = it },
+                        label = stringResource(Res.string.subscription_age_secret_key_placeholder),
+                        useLabelAsPlaceholder = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .padding(bottom = 6.dp),
+                    )
                     SmallTitle(text = stringResource(Res.string.subscription_auto_update))
                     TextField(
                         value = intervalMinutes,
@@ -200,6 +215,7 @@ fun SubscriptionEditScreen(
                             source = url,
                             interval = intervalMs,
                             userAgent = userAgent.trim(),
+                            ageSecretKey = ageSecretKey.trim(),
                             onComplete = onSaved,
                         )
                     },

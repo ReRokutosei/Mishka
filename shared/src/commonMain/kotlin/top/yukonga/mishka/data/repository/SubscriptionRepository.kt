@@ -106,15 +106,18 @@ class SubscriptionRepository(
         source: String,
         interval: Long = 0,
         userAgent: String = "",
+        ageSecretKey: String = "",
     ): Subscription = profileLock.withLock {
         val uuid = Uuid.random().toString()
         val trimmedUA = userAgent.trim()
+        val trimmedAge = ageSecretKey.trim()
         val pending = PendingEntity(
             uuid = uuid,
             name = name,
             type = type,
             source = source,
             userAgent = trimmedUA,
+            ageSecretKey = trimmedAge,
             interval = interval,
             createdAt = Clock.System.now().toEpochMilliseconds(),
         )
@@ -126,6 +129,7 @@ class SubscriptionRepository(
             type = type,
             url = source,
             userAgent = trimmedUA,
+            ageSecretKey = trimmedAge,
             imported = false,
             pending = true,
         )
@@ -140,8 +144,10 @@ class SubscriptionRepository(
         source: String,
         interval: Long,
         userAgent: String,
+        ageSecretKey: String,
     ) = profileLock.withLock {
         val trimmedUA = userAgent.trim()
+        val trimmedAge = ageSecretKey.trim()
         val existing = pendingDao.queryByUUID(uuid)
         if (existing == null) {
             // 从 Imported 创建 Pending 副本
@@ -154,6 +160,7 @@ class SubscriptionRepository(
                     type = imported.type,
                     source = source,
                     userAgent = trimmedUA,
+                    ageSecretKey = trimmedAge,
                     interval = interval,
                     createdAt = imported.createdAt,
                 )
@@ -165,6 +172,7 @@ class SubscriptionRepository(
                     name = name,
                     source = source,
                     userAgent = trimmedUA,
+                    ageSecretKey = trimmedAge,
                     interval = interval,
                     upload = 0,
                     download = 0,
@@ -196,6 +204,7 @@ class SubscriptionRepository(
             type = pending.type,
             source = pending.source,
             userAgent = pending.userAgent,
+            ageSecretKey = pending.ageSecretKey,
             interval = pending.interval,
             upload = upload,
             download = download,
@@ -283,6 +292,7 @@ class SubscriptionRepository(
                 type = ProfileType.File,
                 source = "",
                 userAgent = imported.userAgent,
+                ageSecretKey = imported.ageSecretKey,
                 interval = 0,
                 createdAt = Clock.System.now().toEpochMilliseconds(),
             )
@@ -341,6 +351,7 @@ class SubscriptionRepository(
             type = pending?.type ?: imported.type,
             url = pending?.source ?: imported.source,
             userAgent = pending?.userAgent ?: imported.userAgent,
+            ageSecretKey = pending?.ageSecretKey ?: imported.ageSecretKey,
             interval = pending?.interval ?: imported.interval,
             upload = pending?.upload ?: liveInfo?.Upload ?: imported.upload,
             download = pending?.download ?: liveInfo?.Download ?: imported.download,

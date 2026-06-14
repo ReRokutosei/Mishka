@@ -384,4 +384,18 @@
     <string name="error_v2ray_convert_failed">Failed to parse subscription: unsupported format</string>
     <string name="error_geodata_timeout">GeoIP data download timed out, please check network and retry</string>
     <string name="error_no_valid_proxies">No valid proxy nodes found in subscription</string>
+
+    <!-- Age encryption -->
+    <string name="common_copied">Copied</string>
+    <string name="subscription_age_secret_key">Age Secret Key</string>
+    <string name="subscription_age_secret_key_placeholder">For age-encrypted profiles, leave blank if unused</string>
+    <string name="meta_age">Age Encryption</string>
+    <string name="meta_age_generate">Generate Key Pair</string>
+    <string name="meta_age_generate_summary">Create an age x25519 key pair for encrypted subscriptions</string>
+    <string name="meta_age_keypair_title">Age Key Pair</string>
+    <string name="meta_age_secret_key">Secret Key</string>
+    <string name="meta_age_public_key">Public Key</string>
+    <string name="meta_age_copy_secret">Copy Secret Key</string>
+    <string name="meta_age_copy_public">Copy Public Key</string>
+    <string name="meta_age_keygen_failed">Failed to generate key pair</string>
 </resources>

@@ -9,8 +9,11 @@ actual object MishkaCoreBridge {
         force: Boolean,
         httpProxy: String?,
         userAgent: String,
+        ageSecretKey: String,
         onProgress: suspend (CoreFetchProgress) -> Unit,
     ): CoreFetchResult {
         throw UnsupportedOperationException("MishkaCoreBridge.fetchAndValid not implemented on desktop")
     }
+
+    actual fun generateAgeKeyPair(): AgeKeyPair? = null
 }

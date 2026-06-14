@@ -11,6 +11,7 @@ data class PendingEntity(
     val type: ProfileType,
     val source: String,
     val userAgent: String = "",
+    val ageSecretKey: String = "",
     val interval: Long = 0,
     val upload: Long = 0,
     val download: Long = 0,

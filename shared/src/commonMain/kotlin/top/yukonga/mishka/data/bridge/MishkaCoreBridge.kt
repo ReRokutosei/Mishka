@@ -16,9 +16,16 @@ expect object MishkaCoreBridge {
         force: Boolean,
         httpProxy: String?,
         userAgent: String,
+        ageSecretKey: String,
         onProgress: suspend (CoreFetchProgress) -> Unit,
     ): CoreFetchResult
+
+    /** 生成 age x25519 密钥对（用于 age 加密订阅）；不支持的平台返回 null。 */
+    fun generateAgeKeyPair(): AgeKeyPair?
 }
+
+/** age x25519 密钥对：secretKey 用于解密订阅，publicKey 供加密方使用。 */
+data class AgeKeyPair(val secretKey: String, val publicKey: String)
 
 /** action: FetchConfiguration / FetchProviders / Verifying；args 视 action 而定。 */
 @Serializable

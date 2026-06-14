@@ -30,6 +30,8 @@ import mishka.shared.generated.resources.common_back
 import mishka.shared.generated.resources.common_new_config
 import mishka.shared.generated.resources.common_processing
 import mishka.shared.generated.resources.common_save
+import mishka.shared.generated.resources.subscription_age_secret_key
+import mishka.shared.generated.resources.subscription_age_secret_key_placeholder
 import mishka.shared.generated.resources.subscription_auto_update
 import mishka.shared.generated.resources.subscription_auto_update_placeholder
 import mishka.shared.generated.resources.subscription_config
@@ -78,6 +80,7 @@ fun SubscriptionAddUrlScreen(
     var inputName by remember { mutableStateOf(defaultName) }
     var inputUrl by remember { mutableStateOf(initialUrl) }
     var userAgent by remember { mutableStateOf("") }
+    var ageSecretKey by remember { mutableStateOf("") }
     var intervalMinutes by remember { mutableStateOf("") }
 
     val backdrop = rememberBlurBackdrop()
@@ -187,6 +190,21 @@ fun SubscriptionAddUrlScreen(
                     useLabelAsPlaceholder = true,
                 )
             }
+            item(key = "age_secret_key_title") {
+                SmallTitle(text = stringResource(Res.string.subscription_age_secret_key))
+            }
+            item(key = "age_secret_key_field") {
+                TextField(
+                    value = ageSecretKey,
+                    onValueChange = { ageSecretKey = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 6.dp),
+                    label = stringResource(Res.string.subscription_age_secret_key_placeholder),
+                    useLabelAsPlaceholder = true,
+                )
+            }
             item(key = "interval_field") {
                 SmallTitle(text = stringResource(Res.string.subscription_auto_update))
                 TextField(
@@ -210,6 +228,7 @@ fun SubscriptionAddUrlScreen(
                             url = inputUrl,
                             interval = intervalMs,
                             userAgent = userAgent.trim(),
+                            ageSecretKey = ageSecretKey.trim(),
                             onComplete = onSaved,
                         )
                     },

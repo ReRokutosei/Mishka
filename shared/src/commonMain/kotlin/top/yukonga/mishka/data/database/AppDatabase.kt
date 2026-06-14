@@ -11,7 +11,7 @@ import androidx.sqlite.execSQL
 
 @Database(
     entities = [ImportedEntity::class, PendingEntity::class, SelectionEntity::class],
-    version = 2,
+    version = 3,
 )
 @TypeConverters(ProfileTypeConverter::class)
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -26,6 +26,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     override suspend fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE imported ADD COLUMN userAgent TEXT NOT NULL DEFAULT ''")
         connection.execSQL("ALTER TABLE pending ADD COLUMN userAgent TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+// v3: 为 imported / pending 增加 ageSecretKey 列（per-profile age 解密密钥）
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE imported ADD COLUMN ageSecretKey TEXT NOT NULL DEFAULT ''")
+        connection.execSQL("ALTER TABLE pending ADD COLUMN ageSecretKey TEXT NOT NULL DEFAULT ''")
     }
 }
 

@@ -6,6 +6,7 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/age"
 	clashHttp "github.com/metacubex/mihomo/component/http"
 	"github.com/metacubex/mihomo/config"
 )
@@ -124,6 +126,16 @@ func runFetchAndValid(
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
+	}
+	// age：订阅若是 age armor 加密，用全局密钥（mishkaSetAgeSecretKey 设置）解密后落盘明文，
+	// 运行时直接加载明文无需再带密钥；非加密内容 DecryptBytes 原样返回。
+	if decrypted, derr := age.DecryptBytes(raw); derr != nil {
+		return nil, fmt.Errorf("decrypt config: %w", derr)
+	} else if !bytes.Equal(decrypted, raw) {
+		if werr := os.WriteFile(configPath, decrypted, 0600); werr != nil {
+			return nil, fmt.Errorf("write decrypted config: %w", werr)
+		}
+		raw = decrypted
 	}
 	rawCfg, err := config.UnmarshalRawConfig(raw)
 	if err != nil {
@@ -300,16 +312,19 @@ func fetchProvider(ctx context.Context, u *url.URL, dest string, userAgent strin
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("status %d", resp.StatusCode)
 	}
-	if err := os.MkdirAll(path.Dir(dest), 0700); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(dest, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	if _, err := io.Copy(f, resp.Body); err != nil {
-		_ = os.Remove(dest)
+	// best-effort：provider 若用全局 age 密钥加密则解密后落盘；用 per-provider age-secret-key
+	// 字段加密的（DecryptBytes 因无匹配身份报错）保持原样，由 mihomo 运行时按字段解密。
+	if decrypted, derr := age.DecryptBytes(body); derr == nil {
+		body = decrypted
+	}
+	if err := os.MkdirAll(path.Dir(dest), 0700); err != nil {
+		return err
+	}
+	if err := os.WriteFile(dest, body, 0600); err != nil {
 		return err
 	}
 	return nil

@@ -56,7 +56,7 @@ class ProfileProcessor(
                         ?: throw IllegalArgumentException("Profile $uuid not found")
                     val snap = PendingSnapshot(
                         imported.uuid, imported.name, imported.type, imported.source,
-                        imported.userAgent, imported.interval,
+                        imported.userAgent, imported.ageSecretKey, imported.interval,
                     )
                     val dir = fileManager.prepareProcessing(uuid)
                     // File 类型需要保留旧 config.yaml 作基准；Url 类型会被 force=true 覆盖下载
@@ -71,7 +71,7 @@ class ProfileProcessor(
                     val dir = fileManager.prepareProcessing(uuid)
                     PendingSnapshot(
                         pending.uuid, pending.name, pending.type, pending.source,
-                        pending.userAgent, pending.interval,
+                        pending.userAgent, pending.ageSecretKey, pending.interval,
                     ) to dir
                 }
             }
@@ -86,6 +86,7 @@ class ProfileProcessor(
                         force = snapshot.type == ProfileType.Url,
                         httpProxy = proxyUrl,
                         userAgent = snapshot.userAgent,
+                        ageSecretKey = snapshot.ageSecretKey,
                         onProgress = { p -> onProgress(mapProgress(p)) },
                     )
                 } catch (e: MishkaCoreError) {
@@ -176,5 +177,6 @@ internal data class PendingSnapshot(
     val type: ProfileType,
     val source: String,
     val userAgent: String,
+    val ageSecretKey: String,
     val interval: Long,
 )

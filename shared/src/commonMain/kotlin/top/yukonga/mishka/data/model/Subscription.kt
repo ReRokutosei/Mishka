@@ -11,6 +11,7 @@ data class Subscription(
     val type: ProfileType = ProfileType.Url,
     val url: String = "",
     val userAgent: String = "",
+    val ageSecretKey: String = "",
     val interval: Long = 0,
     val upload: Long = 0,
     val download: Long = 0,

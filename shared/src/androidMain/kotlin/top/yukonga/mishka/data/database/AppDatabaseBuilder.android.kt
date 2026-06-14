@@ -14,7 +14,7 @@ fun getAppDatabase(context: Context): AppDatabase {
             name = context.getDatabasePath("mishka.db").absolutePath,
         )
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
             .also { INSTANCE = it }
     }

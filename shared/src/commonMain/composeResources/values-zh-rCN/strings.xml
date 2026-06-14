@@ -384,4 +384,18 @@
     <string name="error_v2ray_convert_failed">无法解析订阅：不支持的格式</string>
     <string name="error_geodata_timeout">GeoIP 数据下载超时，请检查网络后重试</string>
     <string name="error_no_valid_proxies">订阅中未找到有效的代理节点</string>
+
+    <!-- Age 加密 -->
+    <string name="common_copied">已复制</string>
+    <string name="subscription_age_secret_key">Age 解密密钥</string>
+    <string name="subscription_age_secret_key_placeholder">用于 age 加密订阅，未使用则留空</string>
+    <string name="meta_age">Age 加密</string>
+    <string name="meta_age_generate">生成密钥对</string>
+    <string name="meta_age_generate_summary">为加密订阅生成 age x25519 密钥对</string>
+    <string name="meta_age_keypair_title">Age 密钥对</string>
+    <string name="meta_age_secret_key">私钥</string>
+    <string name="meta_age_public_key">公钥</string>
+    <string name="meta_age_copy_secret">复制私钥</string>
+    <string name="meta_age_copy_public">复制公钥</string>
+    <string name="meta_age_keygen_failed">生成密钥对失败</string>
 </resources>

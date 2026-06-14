@@ -31,13 +31,20 @@ actual object MishkaCoreBridge {
         force: Boolean,
         httpProxy: String?,
         userAgent: String,
+        ageSecretKey: String,
         onProgress: suspend (CoreFetchProgress) -> Unit,
     ): CoreFetchResult = coroutineScope {
         val token = tokenSeq.getAndIncrement()
         val pollerJob = launchProgressPoller(this, token, onProgress)
         try {
+            // age 全局密钥进程级共享：fetchAndValid 由 processLock 串行，fetch 前设置、后清空。
             val raw = withContext(Dispatchers.IO) {
-                nativeFetchAndValid(workDir, url, force, httpProxy, userAgent, token)
+                nativeSetAgeSecretKey(ageSecretKey)
+                try {
+                    nativeFetchAndValid(workDir, url, force, httpProxy, userAgent, token)
+                } finally {
+                    nativeSetAgeSecretKey("")
+                }
             }
             pollerJob.cancel()
             interpretResult(raw)
@@ -93,6 +100,23 @@ actual object MishkaCoreBridge {
 
     @JvmStatic
     private external fun nativeQueryProgress(token: Int): String?
+
+    actual fun generateAgeKeyPair(): AgeKeyPair? {
+        val raw = nativeGenAgeKeyPair() ?: return null
+        if (raw.startsWith("error:")) return null
+        val lines = raw.split("\n")
+        if (lines.size < 2) return null
+        val secret = lines[0].trim()
+        val public = lines[1].trim()
+        if (secret.isEmpty() || public.isEmpty()) return null
+        return AgeKeyPair(secretKey = secret, publicKey = public)
+    }
+
+    @JvmStatic
+    private external fun nativeSetAgeSecretKey(key: String)
+
+    @JvmStatic
+    private external fun nativeGenAgeKeyPair(): String?
 
     private const val PROGRESS_POLL_INTERVAL_MS = 150L
 }

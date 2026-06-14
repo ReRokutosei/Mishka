@@ -225,6 +225,8 @@ private suspend fun saveWithValidation(
             force = false,
             httpProxy = null,
             userAgent = userAgent,
+            // imported/ 下的 config 已在导入时解密为明文，重校验无需 age 密钥
+            ageSecretKey = "",
             onProgress = {},
         )
     }.exceptionOrNull()?.message

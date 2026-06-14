@@ -6,10 +6,12 @@ package main
 import "C"
 
 import (
+	"strings"
 	"sync"
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/metacubex/mihomo/component/age"
 	"github.com/metacubex/mihomo/component/http"
 	"github.com/metacubex/mihomo/constant"
 )
@@ -60,6 +62,31 @@ func mishkaQueryProgress(token C.int) *C.char {
 		}
 	}
 	return nil
+}
+
+//export mishkaSetAgeSecretKey
+//
+// 设置进程级 age 解密密钥，供订阅导入解密 age armor 加密的配置；传空字符串清除。
+// fetchAndValid 由 processLock 串行执行，调用方在 fetch 前设置、fetch 后清空，互不污染。
+func mishkaSetAgeSecretKey(cKey *C.char) {
+	key := strings.TrimSpace(C.GoString(cKey))
+	if key == "" {
+		age.SetGlobalSecretKeys()
+	} else {
+		age.SetGlobalSecretKeys(key)
+	}
+}
+
+//export mishkaGenAgeKeyPair
+//
+// 生成 x25519 age 密钥对，返回 "secretKey\npublicKey"；失败返回 "error: ..."。
+// 调用方必须 mishkaFreeString 释放返回值。
+func mishkaGenAgeKeyPair() *C.char {
+	sk, pk, err := age.GenX25519KeyPair()
+	if err != nil {
+		return C.CString("error: " + err.Error())
+	}
+	return C.CString(sk + "\n" + pk)
 }
 
 func main() {}

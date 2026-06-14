@@ -119,11 +119,12 @@ class SubscriptionViewModel(
         url: String,
         interval: Long = 0,
         userAgent: String = "",
+        ageSecretKey: String = "",
         onComplete: () -> Unit = {},
     ) {
         hideAddDialog()
         runPipeline(ProfileOperation.Import, errorKey = Res.string.error_import_failed) {
-            val sub = repository.create(ProfileType.Url, name, url, interval, userAgent)
+            val sub = repository.create(ProfileType.Url, name, url, interval, userAgent, ageSecretKey)
             pendingOnFailure(sub.id) {
                 processor.apply(sub.id, ::reportProgress)
             }
@@ -235,10 +236,11 @@ class SubscriptionViewModel(
         source: String,
         interval: Long,
         userAgent: String,
+        ageSecretKey: String,
         onComplete: () -> Unit = {},
     ) {
         runPipeline(ProfileOperation.Edit, errorKey = Res.string.error_save_failed) {
-            repository.patch(uuid, name, source, interval, userAgent)
+            repository.patch(uuid, name, source, interval, userAgent, ageSecretKey)
             val pending = repository.queryPending(uuid)
             pending?.enforceFieldValid()
             if (pending?.type == ProfileType.Url && pending.source.isNotBlank()) {
