@@ -20,8 +20,8 @@ expect object MishkaCoreBridge {
         onProgress: suspend (CoreFetchProgress) -> Unit,
     ): CoreFetchResult
 
-    /** 生成 age x25519 密钥对（用于 age 加密订阅）；不支持的平台返回 null。 */
-    fun generateAgeKeyPair(): AgeKeyPair?
+    /** 生成 age 密钥对（hybrid=true 为 mlkem768-x25519 抗量子类型）；不支持的平台返回 null。 */
+    fun generateAgeKeyPair(hybrid: Boolean = false): AgeKeyPair?
 }
 
 /** age x25519 密钥对：secretKey 用于解密订阅，publicKey 供加密方使用。 */

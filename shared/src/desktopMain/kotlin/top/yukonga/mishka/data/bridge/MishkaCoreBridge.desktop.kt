@@ -15,5 +15,5 @@ actual object MishkaCoreBridge {
         throw UnsupportedOperationException("MishkaCoreBridge.fetchAndValid not implemented on desktop")
     }
 
-    actual fun generateAgeKeyPair(): AgeKeyPair? = null
+    actual fun generateAgeKeyPair(hybrid: Boolean): AgeKeyPair? = null
 }

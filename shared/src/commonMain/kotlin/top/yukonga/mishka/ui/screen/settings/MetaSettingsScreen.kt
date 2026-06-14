@@ -41,6 +41,8 @@ import mishka.shared.generated.resources.meta_age
 import mishka.shared.generated.resources.meta_age_copy_public
 import mishka.shared.generated.resources.meta_age_copy_secret
 import mishka.shared.generated.resources.meta_age_generate
+import mishka.shared.generated.resources.meta_age_generate_hybrid
+import mishka.shared.generated.resources.meta_age_generate_hybrid_summary
 import mishka.shared.generated.resources.meta_age_generate_summary
 import mishka.shared.generated.resources.meta_age_keygen_failed
 import mishka.shared.generated.resources.meta_age_keypair_title
@@ -253,6 +255,15 @@ fun MetaSettingsScreen(
             item { SmallTitle(text = stringResource(Res.string.meta_age)) }
             item {
                 val failedMsg = stringResource(Res.string.meta_age_keygen_failed)
+                val genKey: (Boolean) -> Unit = { hybrid ->
+                    val pair = MishkaCoreBridge.generateAgeKeyPair(hybrid)
+                    if (pair != null) {
+                        ageKeyPair = pair
+                        showAgeDialog = true
+                    } else {
+                        showToast(failedMsg)
+                    }
+                }
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -262,15 +273,12 @@ fun MetaSettingsScreen(
                     ArrowPreference(
                         title = stringResource(Res.string.meta_age_generate),
                         summary = stringResource(Res.string.meta_age_generate_summary),
-                        onClick = {
-                            val pair = MishkaCoreBridge.generateAgeKeyPair()
-                            if (pair != null) {
-                                ageKeyPair = pair
-                                showAgeDialog = true
-                            } else {
-                                showToast(failedMsg)
-                            }
-                        },
+                        onClick = { genKey(false) },
+                    )
+                    ArrowPreference(
+                        title = stringResource(Res.string.meta_age_generate_hybrid),
+                        summary = stringResource(Res.string.meta_age_generate_hybrid_summary),
+                        onClick = { genKey(true) },
                     )
                 }
             }

@@ -89,4 +89,16 @@ func mishkaGenAgeKeyPair() *C.char {
 	return C.CString(sk + "\n" + pk)
 }
 
+//export mishkaGenAgeHybridKeyPair
+//
+// 生成 mlkem768-x25519 抗量子 age 密钥对，返回 "secretKey\npublicKey"；失败返回 "error: ..."。
+// 调用方必须 mishkaFreeString 释放返回值。
+func mishkaGenAgeHybridKeyPair() *C.char {
+	sk, pk, err := age.GenHybridKeyPair()
+	if err != nil {
+		return C.CString("error: " + err.Error())
+	}
+	return C.CString(sk + "\n" + pk)
+}
+
 func main() {}

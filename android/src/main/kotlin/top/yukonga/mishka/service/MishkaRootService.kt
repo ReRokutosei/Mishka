@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.mishka.MishkaApplication
 import top.yukonga.mishka.R
+import top.yukonga.mishka.data.database.getAppDatabase
 import top.yukonga.mishka.data.model.resolveExternalController
 import top.yukonga.mishka.data.model.resolveSecretOrNull
 import top.yukonga.mishka.data.repository.OverrideJsonStore
@@ -329,12 +330,18 @@ class MishkaRootService : Service() {
             )
 
             // 5. 以 root 启动 mihomo
+            // age 加密订阅：config 加密落盘（runtime/ 从 imported/ 复制而来同为加密），
+            // 从 DB 读 ageSecretKey 让运行时解密
+            val ageSecretKey = subscriptionId?.let {
+                getAppDatabase(this@MishkaRootService).importedDao().queryByUUID(it)?.ageSecretKey
+            } ?: ""
             val success = runner.start(
                 subscriptionId = subscriptionId,
                 useRoot = true,
                 overrideJsonPath = overrideFile.absolutePath,
                 secret = secret,
                 externalController = extCtl,
+                ageSecretKey = ageSecretKey,
             )
             if (!success) {
                 val errorMsg = runner.errorMessage.ifBlank { getString(R.string.error_start_failed) }

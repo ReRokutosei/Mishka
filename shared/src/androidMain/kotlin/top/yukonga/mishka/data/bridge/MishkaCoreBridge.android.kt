@@ -101,8 +101,8 @@ actual object MishkaCoreBridge {
     @JvmStatic
     private external fun nativeQueryProgress(token: Int): String?
 
-    actual fun generateAgeKeyPair(): AgeKeyPair? {
-        val raw = nativeGenAgeKeyPair() ?: return null
+    actual fun generateAgeKeyPair(hybrid: Boolean): AgeKeyPair? {
+        val raw = (if (hybrid) nativeGenAgeHybridKeyPair() else nativeGenAgeKeyPair()) ?: return null
         if (raw.startsWith("error:")) return null
         val lines = raw.split("\n")
         if (lines.size < 2) return null
@@ -117,6 +117,9 @@ actual object MishkaCoreBridge {
 
     @JvmStatic
     private external fun nativeGenAgeKeyPair(): String?
+
+    @JvmStatic
+    private external fun nativeGenAgeHybridKeyPair(): String?
 
     private const val PROGRESS_POLL_INTERVAL_MS = 150L
 }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.mishka.MishkaApplication
 import top.yukonga.mishka.R
+import top.yukonga.mishka.data.database.getAppDatabase
 import top.yukonga.mishka.data.model.resolveExternalController
 import top.yukonga.mishka.data.model.resolveSecretOrNull
 import top.yukonga.mishka.data.repository.OverrideJsonStore
@@ -315,12 +316,17 @@ class MishkaTunService : VpnService() {
             )
 
             // 3. 启动 mihomo 核心
+            // age 加密订阅：config 加密落盘，从 DB 读 active 订阅 ageSecretKey 让运行时解密
+            val ageSecretKey = subscriptionId?.let {
+                getAppDatabase(this@MishkaTunService).importedDao().queryByUUID(it)?.ageSecretKey
+            } ?: ""
             val success = runner.start(
                 subscriptionId = subscriptionId,
                 useRoot = false,
                 overrideJsonPath = overrideFile.absolutePath,
                 secret = secret,
                 externalController = extCtl,
+                ageSecretKey = ageSecretKey,
             )
             if (!success) {
                 val errorMsg = runner.errorMessage.ifBlank { getString(R.string.error_start_failed) }

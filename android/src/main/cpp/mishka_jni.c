@@ -86,3 +86,10 @@ Java_top_yukonga_mishka_data_bridge_MishkaCoreBridge_nativeGenAgeKeyPair(
     char *result = mishkaGenAgeKeyPair();
     return go_cstr_to_jstring(env, result);
 }
+
+JNIEXPORT jstring JNICALL
+Java_top_yukonga_mishka_data_bridge_MishkaCoreBridge_nativeGenAgeHybridKeyPair(
+        JNIEnv *env, jclass clazz) {
+    char *result = mishkaGenAgeHybridKeyPair();
+    return go_cstr_to_jstring(env, result);
+}

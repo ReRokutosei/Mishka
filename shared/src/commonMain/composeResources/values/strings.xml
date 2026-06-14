@@ -392,6 +392,8 @@
     <string name="meta_age">Age Encryption</string>
     <string name="meta_age_generate">Generate Key Pair</string>
     <string name="meta_age_generate_summary">Create an age x25519 key pair for encrypted subscriptions</string>
+    <string name="meta_age_generate_hybrid">Generate Hybrid Key Pair</string>
+    <string name="meta_age_generate_hybrid_summary">Post-quantum mlkem768-x25519 key pair</string>
     <string name="meta_age_keypair_title">Age Key Pair</string>
     <string name="meta_age_secret_key">Secret Key</string>
     <string name="meta_age_public_key">Public Key</string>

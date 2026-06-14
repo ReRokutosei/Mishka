@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/metacubex/mihomo/component/age"
 	"github.com/metacubex/mihomo/component/updater"
 	"github.com/metacubex/mihomo/config"
 	Const "github.com/metacubex/mihomo/constant"
@@ -49,12 +50,14 @@ func runMihomo() int {
 		secret             string
 		externalController string
 		overrideJSON       string
+		ageSecretKey       string
 	)
 	fs.StringVar(&homeDir, "d", "", "set configuration directory")
 	fs.StringVar(&configFile, "f", "", "specify configuration file")
 	fs.StringVar(&overrideJSON, "override-json", "", "path to a JSON file whose fields override the parsed RawConfig")
 	fs.StringVar(&secret, "secret", "", "override RESTful API secret")
 	fs.StringVar(&externalController, "ext-ctl", "", "override external controller address")
+	fs.StringVar(&ageSecretKey, "age-secret-key", "", "age secret key to decrypt age-armor encrypted configuration")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return 2
 	}
@@ -69,6 +72,12 @@ func runMihomo() int {
 
 	if overrideJSON != "" {
 		config.OverrideJSONPath = overrideJSON
+	}
+
+	// age armor 加密的订阅配置在磁盘上保持加密，运行时用此密钥解密（hub.Parse 内部调
+	// config.UnmarshalRawConfig → age.DecryptBytes 读全局密钥）；SIGHUP reload 也持续生效。
+	if ageSecretKey != "" {
+		age.SetGlobalSecretKeys(ageSecretKey)
 	}
 
 	if homeDir != "" {

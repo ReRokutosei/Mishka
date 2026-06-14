@@ -392,6 +392,8 @@
     <string name="meta_age">Age 加密</string>
     <string name="meta_age_generate">生成密钥对</string>
     <string name="meta_age_generate_summary">为加密订阅生成 age x25519 密钥对</string>
+    <string name="meta_age_generate_hybrid">生成抗量子密钥对</string>
+    <string name="meta_age_generate_hybrid_summary">mlkem768-x25519 抗量子密钥对</string>
     <string name="meta_age_keypair_title">Age 密钥对</string>
     <string name="meta_age_secret_key">私钥</string>
     <string name="meta_age_public_key">公钥</string>

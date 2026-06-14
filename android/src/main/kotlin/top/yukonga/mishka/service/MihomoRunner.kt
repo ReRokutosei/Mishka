@@ -70,6 +70,7 @@ class MihomoRunner(private val context: Context) {
         overrideJsonPath: String,
         secret: String,
         externalController: String,
+        ageSecretKey: String = "",
     ): Boolean = withContext(Dispatchers.IO) {
         if (isRunning) {
             Log.w(TAG, "mihomo already running")
@@ -104,13 +105,17 @@ class MihomoRunner(private val context: Context) {
         }
 
         try {
-            val args = arrayOf(
-                "-d", workDir.absolutePath,
-                "-f", configFile.absolutePath,
-                "--override-json", overrideJsonPath,
-                "--secret", secret,
-                "--ext-ctl", externalController,
-            )
+            // age 加密订阅：config.yaml 加密落盘，运行时用 --age-secret-key 让 mihomo 加载时解密
+            val args = buildList {
+                add("-d"); add(workDir.absolutePath)
+                add("-f"); add(configFile.absolutePath)
+                add("--override-json"); add(overrideJsonPath)
+                add("--secret"); add(secret)
+                add("--ext-ctl"); add(externalController)
+                if (ageSecretKey.isNotEmpty()) {
+                    add("--age-secret-key"); add(ageSecretKey)
+                }
+            }.toTypedArray()
             val logFile = File(workDir, "mihomo.log")
 
             childPid = if (useRoot) {
