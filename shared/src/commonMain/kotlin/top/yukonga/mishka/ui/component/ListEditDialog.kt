@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -40,22 +41,14 @@ fun ListEditDialog(
     ) {
         TextField(
             state = textState,
-            modifier = Modifier.fillMaxWidth().height(160.dp),
+            modifier = Modifier.fillMaxWidth(),
             label = stringResource(Res.string.network_one_per_line),
         )
         Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            TextButton(
-                text = stringResource(Res.string.common_not_modified),
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    onReset()
-                    onDismiss()
-                },
-            )
             TextButton(
                 text = stringResource(Res.string.common_clear),
                 modifier = Modifier.weight(1f),
@@ -76,5 +69,13 @@ fun ListEditDialog(
                 },
             )
         }
+        TextButton(
+            text = stringResource(Res.string.common_not_modified),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            onClick = {
+                onReset()
+                onDismiss()
+            },
+        )
     }
 }
