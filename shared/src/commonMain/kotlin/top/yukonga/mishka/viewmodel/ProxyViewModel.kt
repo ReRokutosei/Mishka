@@ -38,6 +38,7 @@ data class ProxyGroupUi(
 data class ProxyUiState(
     val groups: ImmutableList<ProxyGroupUi> = persistentListOf(),
     val testingGroups: ImmutableSet<String> = persistentSetOf(),
+    val testingNodes: ImmutableSet<String> = persistentSetOf(),
     val error: String = "",
 )
 
@@ -56,6 +57,7 @@ class ProxyViewModel(
     val sortOption: StateFlow<Int> = _sortOption.asStateFlow()
 
     private var repository: MihomoRepository? = null
+
     // mihomo 重启切 client 时取消旧的 loadProxies 协程，防止其 HTTP 响应已读完但 UI 写回
     // 晚于新 client 的写入，把刚切走的旧订阅代理组覆盖回来
     private var loadJob: Job? = null
@@ -176,6 +178,30 @@ class ProxyViewModel(
             loadProxies()
             _uiState.value = _uiState.value.copy(
                 testingGroups = (_uiState.value.testingGroups - group).toPersistentSet(),
+            )
+        }
+    }
+
+    fun testNodeDelay(nodeName: String) {
+        val repo = repository ?: return
+        if (nodeName in _uiState.value.testingNodes) return
+        _uiState.value = _uiState.value.copy(
+            testingNodes = (_uiState.value.testingNodes + nodeName).toPersistentSet(),
+        )
+
+        viewModelScope.launch {
+            // mihomo /proxies/{name}/delay 把结果写入全局 history.delay，
+            // loadProxies 再从 history 读回并分发到所有引用该节点的组，保证跨组延迟一致
+            repo.getProxyDelay(nodeName)
+            if (repository !== repo) {
+                _uiState.value = _uiState.value.copy(
+                    testingNodes = (_uiState.value.testingNodes - nodeName).toPersistentSet(),
+                )
+                return@launch
+            }
+            loadProxies()
+            _uiState.value = _uiState.value.copy(
+                testingNodes = (_uiState.value.testingNodes - nodeName).toPersistentSet(),
             )
         }
     }
