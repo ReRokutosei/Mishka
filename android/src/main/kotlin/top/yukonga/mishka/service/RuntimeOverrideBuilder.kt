@@ -169,12 +169,22 @@ object RuntimeOverrideBuilder {
             exclude = null
         }
 
+        val ipv6Enabled = storage.getString(StorageKeys.VPN_ALLOW_IPV6, "false") == "true"
         val inet6 = when {
-            isRootTun && storage.getString(StorageKeys.VPN_ALLOW_IPV6, "false") == "true" ->
-                listOf("fdfe:dcba:9876::1/126")
-
+            isRootTun && ipv6Enabled -> listOf("fdfe:dcba:9876::1/126")
             !isRootTun -> emptyList()
             else -> null
+        }
+
+        // ROOT TUN 的 auto_route 缺省铺满 0.0.0.0/0，会把 LAN 单播 + 224/4 组播吸进 mihomo，
+        // 破坏同 LAN 设备发现 / P2P 直连（如妙享桌面）。注入私网 + 组播 route-exclude 留在物理网卡，
+        // 与 VPN / TPROXY 的 LAN 放行对齐；仅 ROOT TUN 需要，用户显式设置优先。
+        val routeExclude: List<String>? = when {
+            !isRootTun -> userTun?.routeExcludeAddress
+            else -> userTun?.routeExcludeAddress ?: buildList {
+                addAll(IptablesIntranet.V4)
+                if (ipv6Enabled) addAll(IptablesIntranet.V6)
+            }
         }
 
         val device = userTun?.device
@@ -197,6 +207,7 @@ object RuntimeOverrideBuilder {
             fileDescriptor = tunFd.takeIf { it >= 0 && !isRootTun },
             autoRoute = isRootTun,
             autoDetectInterface = isRootTun,
+            routeExcludeAddress = routeExclude,
             inet6Address = inet6,
             dnsHijack = listOf("0.0.0.0:53"),
             includePackage = include,

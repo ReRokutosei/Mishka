@@ -71,6 +71,7 @@ data class TunOverride(
     @SerialName("file-descriptor") var fileDescriptor: Int? = null,
     @SerialName("auto-route") var autoRoute: Boolean? = null,
     @SerialName("auto-detect-interface") var autoDetectInterface: Boolean? = null,
+    @SerialName("route-exclude-address") var routeExcludeAddress: List<String>? = null,
     @SerialName("inet6-address") var inet6Address: List<String>? = null,
     @SerialName("dns-hijack") var dnsHijack: List<String>? = null,
     @SerialName("include-package") var includePackage: List<String>? = null,
