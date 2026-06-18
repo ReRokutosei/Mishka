@@ -3,11 +3,16 @@ package top.yukonga.mishka.viewmodel
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import top.yukonga.mishka.data.model.LogMessage
 import top.yukonga.mishka.data.repository.MihomoRepository
@@ -28,11 +33,15 @@ class LogViewModel : ViewModel() {
 
     private var nextLogId = 0L
     private val buffer = ArrayDeque<IndexedLog>(MAX_LOGS)
-    private val _logs = MutableStateFlow<List<IndexedLog>>(emptyList())
-    val logs: StateFlow<List<IndexedLog>> = _logs.asStateFlow()
+    // 日志按行高频到达，缓冲在 buffer，由 flushJob 以显示帧率批量推到 _logs，
+    // 避免每行 emit 让 LogScreen 以日志行速率重组。buffer/logsDirty 仅在 Main 访问，无需加锁
+    private var logsDirty = false
+    private val _logs = MutableStateFlow<ImmutableList<IndexedLog>>(persistentListOf())
+    val logs: StateFlow<ImmutableList<IndexedLog>> = _logs.asStateFlow()
 
     private var repository: MihomoRepository? = null
     private var logJob: Job? = null
+    private var flushJob: Job? = null
     private var connectionStateJob: Job? = null
 
     fun setRepository(repo: MihomoRepository?) {
@@ -60,10 +69,13 @@ class LogViewModel : ViewModel() {
     fun disconnect() {
         logJob?.cancel()
         logJob = null
+        flushJob?.cancel()
+        flushJob = null
     }
 
     private fun startLogCollection() {
         logJob?.cancel()
+        flushJob?.cancel()
         val repo = repository ?: return
 
         logJob = viewModelScope.launch {
@@ -73,6 +85,16 @@ class LogViewModel : ViewModel() {
                     appendLog(log)
                 }
         }
+        // 周期性把 buffer 刷到 UI，把重组频率从日志行速率降到显示帧率
+        flushJob = viewModelScope.launch {
+            while (isActive) {
+                if (logsDirty) {
+                    logsDirty = false
+                    _logs.value = buffer.toPersistentList()
+                }
+                delay(FLUSH_INTERVAL_MS)
+            }
+        }
     }
 
     private fun appendLog(log: LogMessage) {
@@ -80,7 +102,7 @@ class LogViewModel : ViewModel() {
         while (buffer.size > MAX_LOGS) {
             buffer.removeFirst()
         }
-        _logs.value = buffer.toList()
+        logsDirty = true
     }
 
     fun setLevel(level: String) {
@@ -96,17 +118,20 @@ class LogViewModel : ViewModel() {
     private fun resetLogs() {
         buffer.clear()
         nextLogId = 0L
-        _logs.value = emptyList()
+        logsDirty = false
+        _logs.value = persistentListOf()
     }
 
     override fun onCleared() {
         super.onCleared()
         logJob?.cancel()
+        flushJob?.cancel()
         connectionStateJob?.cancel()
     }
 
     companion object {
         private const val MAX_LOGS = 500
         private const val BUFFER_CAPACITY = 64
+        private const val FLUSH_INTERVAL_MS = 120L
     }
 }

@@ -91,8 +91,10 @@ fun LogScreen(
         }
     }
 
-    LaunchedEffect(logs.size) {
-        if (logs.isNotEmpty() && autoScrollEnabled) {
+    // key 用单调递增的末条 id：缓冲写满后 size 恒定，不能再以 size 变化驱动自动跟随
+    val lastLogId = logs.lastOrNull()?.id
+    LaunchedEffect(lastLogId) {
+        if (lastLogId != null && autoScrollEnabled) {
             listState.animateScrollToItem(logs.lastIndex)
         }
     }
