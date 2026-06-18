@@ -1,9 +1,9 @@
 package top.yukonga.mishka.platform
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
+import androidx.activity.result.ActivityResultLauncher
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
@@ -121,12 +121,18 @@ actual class ProxyServiceController(private val context: Context) {
         }
     }
 
+    // 由宿主 Activity（MainActivity）在 onCreate 注册后注入，替代已弃用的 startActivityForResult
+    private var vpnPermissionLauncher: ActivityResultLauncher<Intent>? = null
+
+    fun setVpnPermissionLauncher(launcher: ActivityResultLauncher<Intent>?) {
+        vpnPermissionLauncher = launcher
+    }
+
     actual fun requestVpnPermission() {
         if (getTunMode() != TunMode.Vpn) return
-        val intent = VpnService.prepare(context)
-        if (intent != null && context is Activity) {
-            context.startActivityForResult(intent, VPN_REQUEST_CODE)
-        }
+        // prepare 返回 null 表示已授权，无需弹窗
+        val intent = VpnService.prepare(context) ?: return
+        vpnPermissionLauncher?.launch(intent)
     }
 
     actual fun hasVpnPermission(): Boolean {
@@ -183,7 +189,6 @@ actual class ProxyServiceController(private val context: Context) {
     }
 
     companion object {
-        const val VPN_REQUEST_CODE = 1001
         const val EXTRA_SUBSCRIPTION_ID = "subscription_id"
     }
 }

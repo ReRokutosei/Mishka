@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalDensity
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.isRenderEffectSupported
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -22,7 +22,7 @@ fun Modifier.defaultBlurEffect(
 ): Modifier = this.textureBlur(
     backdrop = backdrop,
     shape = RectangleShape,
-    blurRadius = 25f * LocalDensity.current.density,
+    blurRadius = 25f,
     colors = BlurColors(
         blendColors = listOf(
             BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(0.8f)),
@@ -31,11 +31,11 @@ fun Modifier.defaultBlurEffect(
 )
 
 @Composable
-fun rememberBlurEnabled(): State<Boolean> = remember { mutableStateOf(isRenderEffectSupported()) }
+fun rememberBlurEnabled(): State<Boolean> = remember { mutableStateOf(isRuntimeShaderSupported()) }
 
 @Composable
 fun rememberBlurBackdrop(): LayerBackdrop? {
-    if (!rememberBlurEnabled().value || !isRenderEffectSupported()) return null
+    if (!rememberBlurEnabled().value || !isRuntimeShaderSupported()) return null
     val surfaceColor = MiuixTheme.colorScheme.surface
     return rememberLayerBackdrop {
         drawRect(surfaceColor)

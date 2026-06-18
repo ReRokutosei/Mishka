@@ -4,10 +4,19 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
-actual class FilePicker(private val activity: Activity) {
+actual class FilePicker(private val activity: ComponentActivity) {
 
     private var callback: ((FilePickResult?) -> Unit)? = null
+
+    // Activity Result API：在 Activity onCreate 期间构造 FilePicker 时注册，替代已弃用的
+    // startActivityForResult / onActivityResult
+    private val launcher = activity.registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result -> handleResult(result) }
 
     actual fun pickYamlFile(onResult: (FilePickResult?) -> Unit) {
         callback = onResult
@@ -15,13 +24,12 @@ actual class FilePicker(private val activity: Activity) {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
         }
-        @Suppress("DEPRECATION")
-        activity.startActivityForResult(intent, FILE_PICK_REQUEST_CODE)
+        launcher.launch(intent)
     }
 
-    fun handleResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode != FILE_PICK_REQUEST_CODE) return
-        if (resultCode != Activity.RESULT_OK || data?.data == null) {
+    private fun handleResult(result: ActivityResult) {
+        val data = result.data
+        if (result.resultCode != Activity.RESULT_OK || data?.data == null) {
             callback?.invoke(null)
             callback = null
             return
@@ -49,9 +57,5 @@ actual class FilePicker(private val activity: Activity) {
             }
         }
         return name
-    }
-
-    companion object {
-        const val FILE_PICK_REQUEST_CODE = 1002
     }
 }

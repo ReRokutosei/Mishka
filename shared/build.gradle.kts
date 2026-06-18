@@ -34,9 +34,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.navigation3.runtime)
+            implementation(libs.androidx.navigationevent)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.jetbrains.components.resources)
-            implementation(libs.jetbrains.navigationevent)
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
@@ -74,6 +74,7 @@ composeCompiler {
 }
 
 val generateVersionInfo by tasks.registering(GenerateVersionInfoTask::class) {
+    description = "generateVersionInfo"
     versionName.set(ProjectConfig.VERSION_NAME)
     versionCode.set(getGitVersionCode())
     outputFile.set(generatedSrcDir.map { it.file("kotlin/misc/VersionInfo.kt") })

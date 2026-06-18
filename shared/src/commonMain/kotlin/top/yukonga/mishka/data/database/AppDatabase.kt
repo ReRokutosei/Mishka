@@ -3,8 +3,8 @@ package top.yukonga.mishka.data.database
 import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
+import androidx.room3.ColumnTypeConverters
 import androidx.room3.RoomDatabaseConstructor
-import androidx.room3.TypeConverters
 import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
@@ -13,7 +13,7 @@ import androidx.sqlite.execSQL
     entities = [ImportedEntity::class, PendingEntity::class, SelectionEntity::class],
     version = 3,
 )
-@TypeConverters(ProfileTypeConverter::class)
+@ColumnTypeConverters(ProfileTypeConverter::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun importedDao(): ImportedDao

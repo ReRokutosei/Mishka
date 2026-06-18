@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var appProxyViewModel: AppProxyViewModel
     private lateinit var filePicker: FilePicker
     private lateinit var scanQrLauncher: ActivityResultLauncher<ScannerConfig>
+    private lateinit var vpnPermissionLauncher: ActivityResultLauncher<Intent>
     private var qrResultCallback: ((String?) -> Unit)? = null
     private val scannerConfig: ScannerConfig by lazy {
         ScannerConfig.build {
@@ -127,6 +129,16 @@ class MainActivity : ComponentActivity() {
         }
         top.yukonga.mishka.platform.IconDiskCache.init(this)
         serviceController = ProxyServiceController(this)
+        // VPN 授权走 Activity Result API：MainActivity 注册 launcher，由 ProxyServiceController 触发，
+        // 授权通过后回调里重新 startProxy（此时已持权限，直接拉起 Service）
+        vpnPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == RESULT_OK) {
+                homeViewModel.startProxy()
+            }
+        }
+        serviceController.setVpnPermissionLauncher(vpnPermissionLauncher)
         filePicker = FilePicker(this)
         logViewModel = LogViewModel()
         providerViewModel = ProviderViewModel()
@@ -264,23 +276,13 @@ class MainActivity : ComponentActivity() {
         val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         val currentTaskId = taskId
         am.appTasks
-            .firstOrNull { it.taskInfo?.taskId == currentTaskId }
+            .firstOrNull { task ->
+                val info = task.taskInfo ?: return@firstOrNull false
+                // TaskInfo.taskId 是 API 29 才加入的字段；26-28 上回退到 RecentTaskInfo.id
+                @Suppress("DEPRECATION")
+                val id = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) info.taskId else info.id
+                id == currentTaskId
+            }
             ?.setExcludeFromRecents(exclude)
-    }
-
-    @Deprecated("Use ActivityResult API")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            ProxyServiceController.VPN_REQUEST_CODE -> {
-                if (resultCode == RESULT_OK) {
-                    homeViewModel.startProxy()
-                }
-            }
-
-            FilePicker.FILE_PICK_REQUEST_CODE -> {
-                filePicker.handleResult(requestCode, resultCode, data)
-            }
-        }
     }
 }
